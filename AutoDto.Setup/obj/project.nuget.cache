@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "R0j3c4nGRgFDm3dCTgSZeBvyFehza1IUFl8gUMTvCBCL9bJbles6bSJvBKOYY3l25DNbDF45fMMYMLJxb2G7dg==",
+  "success": true,
+  "projectFilePath": "C:\\Data\\CustomTools\\AutoDto\\AutoDto.Setup\\AutoDto.Setup.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Vladyslav.Ohorodniko\\.nuget\\packages\\microsoft.netcore.platforms\\1.1.0\\microsoft.netcore.platforms.1.1.0.nupkg.sha512",
+    "C:\\Users\\Vladyslav.Ohorodniko\\.nuget\\packages\\netstandard.library\\2.0.3\\netstandard.library.2.0.3.nupkg.sha512"
+  ],
+  "logs": []
+}

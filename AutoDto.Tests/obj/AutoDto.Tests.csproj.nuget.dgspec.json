@@ -1,0 +1,278 @@
+{
+  "format": 1,
+  "restore": {
+    "C:\\Data\\CustomTools\\AutoDto\\AutoDto.Tests\\AutoDto.Tests.csproj": {}
+  },
+  "projects": {
+    "C:\\Data\\CustomTools\\AutoDto\\AutoDto.Setup\\AutoDto.Setup.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Data\\CustomTools\\AutoDto\\AutoDto.Setup\\AutoDto.Setup.csproj",
+        "projectName": "AutoDto.Setup",
+        "projectPath": "C:\\Data\\CustomTools\\AutoDto\\AutoDto.Setup\\AutoDto.Setup.csproj",
+        "packagesPath": "C:\\Users\\Vladyslav.Ohorodniko\\.nuget\\packages\\",
+        "outputPath": "C:\\Data\\CustomTools\\AutoDto\\AutoDto.Setup\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\Vladyslav.Ohorodniko\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "netstandard2.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "netstandard2.0": {
+            "targetAlias": "netstandard2.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "netstandard2.0": {
+          "targetAlias": "netstandard2.0",
+          "dependencies": {
+            "NETStandard.Library": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[2.0.3, )",
+              "autoReferenced": true
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.202\\RuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Data\\CustomTools\\AutoDto\\AutoDto.SourceGen\\AutoDto.SourceGen.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Data\\CustomTools\\AutoDto\\AutoDto.SourceGen\\AutoDto.SourceGen.csproj",
+        "projectName": "AutoDto.SourceGen",
+        "projectPath": "C:\\Data\\CustomTools\\AutoDto\\AutoDto.SourceGen\\AutoDto.SourceGen.csproj",
+        "packagesPath": "C:\\Users\\Vladyslav.Ohorodniko\\.nuget\\packages\\",
+        "outputPath": "C:\\Data\\CustomTools\\AutoDto\\AutoDto.SourceGen\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\Vladyslav.Ohorodniko\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "netstandard2.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "netstandard2.0": {
+            "targetAlias": "netstandard2.0",
+            "projectReferences": {
+              "C:\\Data\\CustomTools\\AutoDto\\AutoDto.Setup\\AutoDto.Setup.csproj": {
+                "projectPath": "C:\\Data\\CustomTools\\AutoDto\\AutoDto.Setup\\AutoDto.Setup.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "netstandard2.0": {
+          "targetAlias": "netstandard2.0",
+          "dependencies": {
+            "Microsoft.CodeAnalysis.CSharp": {
+              "target": "Package",
+              "version": "[4.5.0, )"
+            },
+            "NETStandard.Library": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[2.0.3, )",
+              "autoReferenced": true
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.202\\RuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Data\\CustomTools\\AutoDto\\AutoDto.Tests\\AutoDto.Tests.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Data\\CustomTools\\AutoDto\\AutoDto.Tests\\AutoDto.Tests.csproj",
+        "projectName": "AutoDto.Tests",
+        "projectPath": "C:\\Data\\CustomTools\\AutoDto\\AutoDto.Tests\\AutoDto.Tests.csproj",
+        "packagesPath": "C:\\Users\\Vladyslav.Ohorodniko\\.nuget\\packages\\",
+        "outputPath": "C:\\Data\\CustomTools\\AutoDto\\AutoDto.Tests\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\Vladyslav.Ohorodniko\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net6.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net6.0": {
+            "targetAlias": "net6.0",
+            "projectReferences": {
+              "C:\\Data\\CustomTools\\AutoDto\\AutoDto.Setup\\AutoDto.Setup.csproj": {
+                "projectPath": "C:\\Data\\CustomTools\\AutoDto\\AutoDto.Setup\\AutoDto.Setup.csproj"
+              },
+              "C:\\Data\\CustomTools\\AutoDto\\AutoDto.SourceGen\\AutoDto.SourceGen.csproj": {
+                "projectPath": "C:\\Data\\CustomTools\\AutoDto\\AutoDto.SourceGen\\AutoDto.SourceGen.csproj"
+              },
+              "C:\\Data\\CustomTools\\AutoDto\\AutoDto.Tools\\AutoDto.Tools.csproj": {
+                "projectPath": "C:\\Data\\CustomTools\\AutoDto\\AutoDto.Tools\\AutoDto.Tools.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net6.0": {
+          "targetAlias": "net6.0",
+          "dependencies": {
+            "Microsoft.CodeAnalysis.CSharp": {
+              "target": "Package",
+              "version": "[4.5.0, )"
+            },
+            "Microsoft.NET.Test.Sdk": {
+              "target": "Package",
+              "version": "[17.1.0, )"
+            },
+            "coverlet.collector": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[3.1.2, )"
+            },
+            "xunit": {
+              "target": "Package",
+              "version": "[2.4.1, )"
+            },
+            "xunit.runner.visualstudio": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[2.4.3, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.202\\RuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Data\\CustomTools\\AutoDto\\AutoDto.Tools\\AutoDto.Tools.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Data\\CustomTools\\AutoDto\\AutoDto.Tools\\AutoDto.Tools.csproj",
+        "projectName": "AutoDto.Tools",
+        "projectPath": "C:\\Data\\CustomTools\\AutoDto\\AutoDto.Tools\\AutoDto.Tools.csproj",
+        "packagesPath": "C:\\Users\\Vladyslav.Ohorodniko\\.nuget\\packages\\",
+        "outputPath": "C:\\Data\\CustomTools\\AutoDto\\AutoDto.Tools\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\Vladyslav.Ohorodniko\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net6.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net6.0": {
+            "targetAlias": "net6.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net6.0": {
+          "targetAlias": "net6.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.202\\RuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+C:\Data\CustomTools\DtoAutoGenerator\DtoAutoGenerator\bin\Debug\net6.0\DtoAutoGenerator.deps.json
+C:\Data\CustomTools\DtoAutoGenerator\DtoAutoGenerator\bin\Debug\net6.0\DtoAutoGenerator.dll
+C:\Data\CustomTools\DtoAutoGenerator\DtoAutoGenerator\bin\Debug\net6.0\DtoAutoGenerator.pdb
+C:\Data\CustomTools\DtoAutoGenerator\DtoAutoGenerator\obj\Debug\net6.0\DtoAutoGenerator.csproj.AssemblyReference.cache
+C:\Data\CustomTools\DtoAutoGenerator\DtoAutoGenerator\obj\Debug\net6.0\DtoAutoGenerator.GeneratedMSBuildEditorConfig.editorconfig
+C:\Data\CustomTools\DtoAutoGenerator\DtoAutoGenerator\obj\Debug\net6.0\DtoAutoGenerator.AssemblyInfoInputs.cache
+C:\Data\CustomTools\DtoAutoGenerator\DtoAutoGenerator\obj\Debug\net6.0\DtoAutoGenerator.AssemblyInfo.cs
+C:\Data\CustomTools\DtoAutoGenerator\DtoAutoGenerator\obj\Debug\net6.0\DtoAutoGenerator.csproj.CoreCompileInputs.cache
+C:\Data\CustomTools\DtoAutoGenerator\DtoAutoGenerator\obj\Debug\net6.0\DtoAutoGenerator.dll
+C:\Data\CustomTools\DtoAutoGenerator\DtoAutoGenerator\obj\Debug\net6.0\refint\DtoAutoGenerator.dll
+C:\Data\CustomTools\DtoAutoGenerator\DtoAutoGenerator\obj\Debug\net6.0\DtoAutoGenerator.pdb
+C:\Data\CustomTools\DtoAutoGenerator\DtoAutoGenerator\obj\Debug\net6.0\ref\DtoAutoGenerator.dll
