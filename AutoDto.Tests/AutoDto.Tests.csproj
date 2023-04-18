@@ -23,7 +23,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AutoDto.Setup\AutoDto.Setup.csproj" />
     <ProjectReference Include="..\AutoDto.SourceGen\AutoDto.SourceGen.csproj" />
   </ItemGroup>
 
