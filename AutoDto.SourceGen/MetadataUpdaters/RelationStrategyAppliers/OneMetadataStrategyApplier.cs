@@ -1,4 +1,5 @@
-﻿using AutoDto.SourceGen.Metadatas;
+﻿using AutoDto.SourceGen.Helpers;
+using AutoDto.SourceGen.Metadatas;
 using AutoDto.SourceGen.TypeParser;
 using Microsoft.CodeAnalysis;
 using System.Collections;
@@ -62,7 +63,7 @@ internal abstract class OneMetadataStrategyApplier : IStrategyApplier
     private static bool TryFindIdProperty(ITypeSymbol propertyType, out IPropertySymbol idProperty)
     {
         idProperty = null;
-        foreach (var member in propertyType.GetMembers().OfType<IPropertySymbol>())
+        foreach (var member in propertyType.GetAllMembersFromAllBaseTypes().OfType<IPropertySymbol>())
         {
             if (member.Name == "Id")
             {
