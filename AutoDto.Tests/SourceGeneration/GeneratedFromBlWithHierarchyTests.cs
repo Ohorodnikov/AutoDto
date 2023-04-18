@@ -1,5 +1,5 @@
 ﻿using AutoDto.Tests.SourceGeneration.Models.HierarchyTestModels;
-using AutoDto.Tools;
+using AutoDto.Tests.TestHelpers;
 using static AutoDto.Tests.TestHelpers.DtoCodeCreator;
 using static AutoDto.Tests.TestHelpers.SyntaxChecker;
 

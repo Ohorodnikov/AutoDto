@@ -1,6 +1,6 @@
 ﻿using AutoDto.Setup;
 using AutoDto.Tests.SourceGeneration.Models;
-using AutoDto.Tools;
+using AutoDto.Tests.TestHelpers;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Reflection;

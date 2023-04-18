@@ -25,7 +25,6 @@
   <ItemGroup>
     <ProjectReference Include="..\AutoDto.Setup\AutoDto.Setup.csproj" />
     <ProjectReference Include="..\AutoDto.SourceGen\AutoDto.SourceGen.csproj" />
-    <ProjectReference Include="..\AutoDto.Tools\AutoDto.Tools.csproj" />
   </ItemGroup>
 
 </Project>
