@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Reflection.Metadata;
 using System.Text;
@@ -57,20 +58,19 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var syntaxProvider = context.SyntaxProvider
+        context.RegisterSourceOutput(
+            CreateSyntaxProvider(context), 
+            (ctx, classes) => ApplyGenerator(ctx, classes));
+    }
+
+    private IncrementalValueProvider<ImmutableArray<ClassData>> CreateSyntaxProvider(IncrementalGeneratorInitializationContext context)
+    {
+        return context.SyntaxProvider
             .CreateSyntaxProvider(
                 (node, _) => node is TypeDeclarationSyntax,
-                (sc, _) =>
-                {
-                    return new ClassData(
-                            (INamedTypeSymbol)sc.SemanticModel.GetDeclaredSymbol(sc.Node), 
-                            (TypeDeclarationSyntax)sc.Node);
-                })
+                (sc, _) => new ClassData(sc.ToTypeSymbol(), (TypeDeclarationSyntax)sc.Node))
             .Where(x => _parser.CanParse(x.TypeDeclaration))
-            .Collect()
-            ;
-
-        context.RegisterSourceOutput(syntaxProvider, (ctx, classes) => ApplyGenerator(ctx, classes));
+            .Collect();
     }
 
     private void ApplyGenerator(SourceProductionContext context, IEnumerable<ClassData> classes)
