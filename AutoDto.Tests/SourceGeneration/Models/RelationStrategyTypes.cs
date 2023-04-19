@@ -73,3 +73,18 @@ public class TypeWithArrayRelationWithoutId
     public TypeWithoutId[] WithoutId { get; set; }
 }
 
+public class BaseBl<T>
+{
+    public T Id { get; set; }
+}
+
+public class BlWithHierarchy : BaseBl<string>
+{
+    public string Name { get; set; }
+}
+
+public class TypeWithRelWithHierarchy : BaseBl<int>
+{
+    public string Description { get; set; }
+    public BlWithHierarchy Relation { get; set; }
+}

@@ -110,6 +110,25 @@ namespace AutoDto.Tests.Dto;
         RunTestWithOneType(blType, RelationStrategy.AddIdProperty, expected.ToArray());
     }
 
+    [Fact]
+    public void Strategy_AddId_FindIdInHierarchy_Test()
+    {
+        var blType = typeof(TypeWithRelWithHierarchy);
+
+        var expected = new[]
+        {
+            blType.GetProperty(nameof(TypeWithRelWithHierarchy.Id)),
+            blType.GetProperty(nameof(TypeWithRelWithHierarchy.Description)),
+            blType.GetProperty(nameof(TypeWithRelWithHierarchy.Relation)),
+        }
+        .Select(x => (x.PropertyType, x.Name))
+        .ToList();
+
+        expected.Add((typeof(string), nameof(TypeWithRelWithHierarchy.Relation) + "Id"));
+
+        RunTestWithOneType(blType, RelationStrategy.AddIdProperty, expected.ToArray());
+    }
+
     [Theory]
     [InlineData(RelationStrategy.None)]
     [InlineData(RelationStrategy.ReplaceToIdProperty)]
