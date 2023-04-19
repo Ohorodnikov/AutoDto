@@ -17,7 +17,7 @@ internal class DtoIgnoreMetadataUpdater : AttributeMetadataUpdater<DtoIgnoreData
 
             if (removeItem == null)
             {
-                attributeData.DiagnosticMessages.Add(new NotFoundPropertyInBlWarn(prop2Ignore, metadata.Name));
+                attributeData.DiagnosticMessages.Add(new NotFoundPropertyInBlWarn(prop2Ignore, metadata.BlFullName));
                 continue;
             }
 
