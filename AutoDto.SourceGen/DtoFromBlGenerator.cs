@@ -22,10 +22,22 @@ using Microsoft.CodeAnalysis.Text;
 namespace AutoDto.SourceGen;
 
 [Generator]
-public class DtoFromBlGenerator : ISourceGenerator
+public class DtoFromBlGenerator : IIncrementalGenerator
 {
     private ITypeParser _parser;
     private IMetadataUpdaterHelper _updaterHelper;
+
+    private class ClassData 
+    {
+        public ClassData(INamedTypeSymbol typeSymbol, TypeDeclarationSyntax typeDeclaration)
+        {
+            TypeSymbol = typeSymbol;
+            TypeDeclaration = typeDeclaration;
+        }
+
+        public INamedTypeSymbol TypeSymbol { get; }
+        public TypeDeclarationSyntax TypeDeclaration { get; }
+    }
 
     public DtoFromBlGenerator()
     {
@@ -38,22 +50,32 @@ public class DtoFromBlGenerator : ISourceGenerator
             });
 
         _parser = new TypeParser.TypeParser(
-            new AttributeDataReader(new AttributeDataFactory()), 
-            _updaterHelper     
+            new AttributeDataReader(new AttributeDataFactory()),
+            _updaterHelper
             );
     }
 
-    public void Initialize(GeneratorInitializationContext context)
+    public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        context.RegisterForSyntaxNotifications(() => new SyntaxReceiver(_parser));
+        var syntaxProvider = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                (node, _) => node is TypeDeclarationSyntax,
+                (sc, _) =>
+                {
+                    return new ClassData(
+                            (INamedTypeSymbol)sc.SemanticModel.GetDeclaredSymbol(sc.Node), 
+                            (TypeDeclarationSyntax)sc.Node);
+                })
+            .Where(x => _parser.CanParse(x.TypeDeclaration))
+            .Collect()
+            ;
+
+        context.RegisterSourceOutput(syntaxProvider, (ctx, classes) => ApplyGenerator(ctx, classes));
     }
 
-    public void Execute(GeneratorExecutionContext context)
+    private void ApplyGenerator(SourceProductionContext context, IEnumerable<ClassData> classes)
     {
-        if (!(context.SyntaxReceiver is SyntaxReceiver receiver))
-            return;
-
-        var dtoTypeMetadatas = CreateMetadata(receiver.DtoDeclarations, context);
+        var dtoTypeMetadatas = CreateMetadata(classes.ToList());
 
         _updaterHelper.ApplyCommonRules(dtoTypeMetadatas);
 
@@ -65,16 +87,13 @@ public class DtoFromBlGenerator : ISourceGenerator
         }
     }
 
-    private Dictionary<string, List<IDtoTypeMetadata>> CreateMetadata(List<SyntaxNode> dtoDeclarations, GeneratorExecutionContext context)
+    private Dictionary<string, List<IDtoTypeMetadata>> CreateMetadata(List<ClassData> classes)
     {
-        var dtoTypeMetadatas = new Dictionary<string, List<IDtoTypeMetadata>>(dtoDeclarations.Count);
+        var dtoTypeMetadatas = new Dictionary<string, List<IDtoTypeMetadata>>(classes.Count);
 
-        foreach (var declaration in dtoDeclarations)
+        foreach (var classData in classes)
         {
-            var semanticModel = context.Compilation.GetSemanticModel(declaration.SyntaxTree);
-            var dtoSymbol = (INamedTypeSymbol)semanticModel.GetDeclaredSymbol(declaration);
-
-            var md = _parser.Parse(dtoSymbol, declaration);
+            var md = _parser.Parse(classData.TypeSymbol, classData.TypeDeclaration);
 
             var currentBlTypeStore = dtoTypeMetadatas.GetOrAdd(md.BlFullName, () => new List<IDtoTypeMetadata>());
 
@@ -84,7 +103,7 @@ public class DtoFromBlGenerator : ISourceGenerator
         return dtoTypeMetadatas;
     }
 
-    private void AddSourceIfNoErrors(IDtoTypeMetadata metadata, GeneratorExecutionContext context)
+    private void AddSourceIfNoErrors(IDtoTypeMetadata metadata, SourceProductionContext context)
     {
         if (metadata.DiagnosticMessages.Any(msg => msg.message.Severity == DiagnosticSeverity.Error))
             return;
@@ -92,30 +111,13 @@ public class DtoFromBlGenerator : ISourceGenerator
         context.AddSource($"{metadata.Name}.g.cs", SourceText.From(metadata.ToClassString(), Encoding.UTF8));
     }
 
-    private void WriteMessages(IDtoTypeMetadata metadata, GeneratorExecutionContext context)
+    private void WriteMessages(IDtoTypeMetadata metadata, SourceProductionContext context)
     {
         foreach (var message in metadata.DiagnosticMessages)
         {
             var location = message.location ?? metadata.Location ?? Location.None;
             var msg = message.message;
             context.ReportDiagnostic(Diagnostic.Create(msg.AsDiagnosticDescriptor(), location, msg.Parameters));
-        }
-    }
-
-    private class SyntaxReceiver : ISyntaxReceiver
-    {
-        private readonly ITypeParser _parser;
-        public SyntaxReceiver(ITypeParser typeParser)
-        {
-            _parser = typeParser;
-        }
-
-        public List<SyntaxNode> DtoDeclarations { get; } = new();
-
-        public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
-        {
-            if (_parser.CanParse(syntaxNode))
-                DtoDeclarations.Add(syntaxNode);
         }
     }
 }
