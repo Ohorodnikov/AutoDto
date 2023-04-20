@@ -61,11 +61,22 @@ public class GeneratorRunner
             * These assemblies couldn't be loaded correctly via the same construction as above,
             * in specific the System.Runtime.
             */
-        returnList.Add(MetadataReference.CreateFromFile(Path.Combine(assemblyPath, "mscorlib.dll")));
-        returnList.Add(MetadataReference.CreateFromFile(Path.Combine(assemblyPath, "System.dll")));
-        returnList.Add(MetadataReference.CreateFromFile(Path.Combine(assemblyPath, "System.Core.dll")));
-        returnList.Add(MetadataReference.CreateFromFile(Path.Combine(assemblyPath, "System.Runtime.dll")));
-        returnList.Add(MetadataReference.CreateFromFile(Path.Combine(assemblyPath, "netstandard.dll")));
+
+        var libs = new[]
+        {
+            "mscorlib.dll",
+            "netstandard.dll",
+
+            "System.dll",
+            "System.Core.dll",
+            "System.Runtime.dll",
+            "System.Collections.dll",
+            "System.Collections.Concurrent.dll",
+            "System.Collections.Immutable.dll",
+        };
+
+        foreach (var lib in libs)
+            returnList.Add(MetadataReference.CreateFromFile(Path.Combine(assemblyPath,lib)));
 
         return returnList;
     }
