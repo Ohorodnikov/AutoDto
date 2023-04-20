@@ -37,6 +37,24 @@ public class TypeWithEnumerableRelation
     public IEnumerable<TypeWithoutRelation> WithId { get; set; }
 }
 
+public class TypeWithListRelation
+{
+    public long Id { get; set; }
+    public string Name { get; set; }
+    public string Description { get; set; }
+
+    public List<TypeWithoutRelation> WithId { get; set; }
+}
+
+public class TypeWithHashSetRelation
+{
+    public long Id { get; set; }
+    public string Name { get; set; }
+    public string Description { get; set; }
+
+    public System.Collections.Generic.HashSet<TypeWithoutRelation> WithId { get; set; }
+}
+
 public class TypeWithArrayRelation
 {
     public long Id { get; set; }
