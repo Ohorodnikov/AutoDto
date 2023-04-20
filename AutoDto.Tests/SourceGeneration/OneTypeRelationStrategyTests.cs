@@ -153,11 +153,12 @@ namespace AutoDto.Tests.Dto;
     #endregion
     #region relation collection
 
-    [Fact]
-    public void Strategy_Replace2Id_Collection_Test()
+    [Theory]
+    [InlineData(typeof(TypeWithEnumerableRelation), typeof(IEnumerable<long>))]
+    [InlineData(typeof(TypeWithListRelation), typeof(List<long>))]
+    [InlineData(typeof(TypeWithHashSetRelation), typeof(HashSet<long>))]
+    public void Strategy_Replace2Id_Collection_Test(Type blType, Type propType)
     {
-        var blType = typeof(TypeWithEnumerableRelation);
-
         var expected = new[]
         {
             blType.GetProperty(nameof(TypeWithEnumerableRelation.Id)),
@@ -168,16 +169,17 @@ namespace AutoDto.Tests.Dto;
         .Select(x => (x.PropertyType, x.Name))
         .ToList();
 
-        expected.Add((typeof(IEnumerable<long>), nameof(TypeWithEnumerableRelation.WithId) + "Ids"));
+        expected.Add((propType, nameof(TypeWithEnumerableRelation.WithId) + "Ids"));
 
         RunTestWithOneType(blType, RelationStrategy.ReplaceToIdProperty, expected.ToArray());
     }
 
-    [Fact]
-    public void Stategy_AddId_Collection_Test()
+    [Theory]
+    [InlineData(typeof(TypeWithEnumerableRelation), typeof(IEnumerable<long>))]
+    [InlineData(typeof(TypeWithListRelation), typeof(List<long>))]
+    [InlineData(typeof(TypeWithHashSetRelation), typeof(HashSet<long>))]
+    public void Stategy_AddId_Collection_Test(Type blType, Type propType)
     {
-        var blType = typeof(TypeWithEnumerableRelation);
-
         var expected = new[]
         {
             blType.GetProperty(nameof(TypeWithEnumerableRelation.Id)),
@@ -188,7 +190,7 @@ namespace AutoDto.Tests.Dto;
         .Select(x => (x.PropertyType, x.Name))
         .ToList();
 
-        expected.Add((typeof(IEnumerable<long>), nameof(TypeWithEnumerableRelation.WithId) + "Ids"));
+        expected.Add((propType, nameof(TypeWithEnumerableRelation.WithId) + "Ids"));
 
         RunTestWithOneType(blType, RelationStrategy.AddIdProperty, expected.ToArray());
     }

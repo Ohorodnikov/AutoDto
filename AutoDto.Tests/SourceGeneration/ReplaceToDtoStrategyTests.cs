@@ -54,17 +54,18 @@ public class ReplaceToDtoStrategyTests : BaseUnitTest
         RunOneRelation(new[] { masterDef, relDef }, nameof(TypeWithRelation.WithId), newPropType);
     }
 
-    [Fact]
-    public void RelationDto_OneDto_Found_Collection_Test()
+    [Theory]
+    [InlineData(typeof(TypeWithEnumerableRelation), typeof(IEnumerable<long>))]
+    [InlineData(typeof(TypeWithListRelation), typeof(List<long>))]
+    [InlineData(typeof(TypeWithHashSetRelation), typeof(HashSet<long>))]
+    public void RelationDto_OneDto_Found_Collection_Test(Type blType, Type propType)
     {
-        var masterDef = new DtoData(typeof(TypeWithEnumerableRelation), RelationStrategy.ReplaceToDtoProperty, "MasterDto");
+        var masterDef = new DtoData(blType, RelationStrategy.ReplaceToDtoProperty, "MasterDto");
         var relDef = new DtoData(typeof(TypeWithoutRelation), RelationStrategy.None, "RelationDto");
 
         var newPropTypeParam = new TypeDescriptor(DtoTypNamespace, relDef.DtoName, TypeType.Simple, null);
 
-        var enumerType = typeof(IEnumerable<>);
-
-        var newPropType = new TypeDescriptor(enumerType.Namespace, enumerType.Name, TypeType.Generic, new[] {newPropTypeParam} );
+        var newPropType = new TypeDescriptor(propType.Namespace, propType.Name, TypeType.Generic, new[] {newPropTypeParam} );
 
         RunOneRelation(new[] { masterDef, relDef }, nameof(TypeWithEnumerableRelation.WithId), newPropType);
     }
@@ -95,10 +96,13 @@ public class ReplaceToDtoStrategyTests : BaseUnitTest
         RunOneRelation(new[] { masterDef, relDef }, nameof(TypeWithRelation.WithId), newPropType);
     }
 
-    [Fact]
-    public void RelationDto_OneDto_NotFound_Collection_Test()
+    [Theory]
+    [InlineData(typeof(TypeWithEnumerableRelation))]
+    [InlineData(typeof(TypeWithListRelation))]
+    [InlineData(typeof(TypeWithHashSetRelation))]
+    public void RelationDto_OneDto_NotFound_Collection_Test(Type blType)
     {
-        var masterDef = new DtoData(typeof(TypeWithEnumerableRelation), RelationStrategy.ReplaceToDtoProperty, "MasterDto");
+        var masterDef = new DtoData(blType, RelationStrategy.ReplaceToDtoProperty, "MasterDto");
         var relDef = new DtoData(typeof(TypeWithoutId), RelationStrategy.None, "SomeDto");
 
         var newPropType = new TypeDescriptor(masterDef.Type.GetProperty(nameof(TypeWithEnumerableRelation.WithId)).PropertyType);
@@ -135,18 +139,19 @@ public class ReplaceToDtoStrategyTests : BaseUnitTest
         RunOneRelation(new[] {masterDef, relDefMain, relDefNotMain}, relationPropName, newPropType);
     }
 
-    [Fact]
-    public void RelationDto_ManyDtos_HasOneMain_Collection_Test()
+    [Theory]
+    [InlineData(typeof(TypeWithEnumerableRelation), typeof(IEnumerable<long>))]
+    [InlineData(typeof(TypeWithListRelation), typeof(List<long>))]
+    [InlineData(typeof(TypeWithHashSetRelation), typeof(HashSet<long>))]
+    public void RelationDto_ManyDtos_HasOneMain_Collection_Test(Type blType, Type propType)
     {
-        var masterDef = new DtoData(typeof(TypeWithEnumerableRelation), RelationStrategy.ReplaceToDtoProperty, "MasterDto");
+        var masterDef = new DtoData(blType, RelationStrategy.ReplaceToDtoProperty, "MasterDto");
         var relDefMain = new DtoData(typeof(TypeWithoutRelation), RelationStrategy.None, "RelationMainDto", GetMainAttr());
         var relDefNotMain = new DtoData(typeof(TypeWithoutRelation), RelationStrategy.None, "RelationNotMainDto");
 
         var newPropTypeParam = new TypeDescriptor(DtoTypNamespace, relDefMain.DtoName, TypeType.Simple, null);
 
-        var enumerType = typeof(IEnumerable<>);
-
-        var newPropType = new TypeDescriptor(enumerType.Namespace, enumerType.Name, TypeType.Generic, new[] { newPropTypeParam });
+        var newPropType = new TypeDescriptor(propType.Namespace, propType.Name, TypeType.Generic, new[] { newPropTypeParam });
 
         RunOneRelation(new[] { masterDef, relDefMain, relDefNotMain }, nameof(TypeWithEnumerableRelation.WithId), newPropType);
     }
@@ -189,11 +194,14 @@ public class ReplaceToDtoStrategyTests : BaseUnitTest
 
         AssertNoMasterDto(new[] { masterDef, relDefMain, relDefNotMain });
     }
-    
-    [Fact]
-    public void RelationDto_ManyDtos_MainNotFound_Collection_Test()
+
+    [Theory]
+    [InlineData(typeof(TypeWithEnumerableRelation))]
+    [InlineData(typeof(TypeWithListRelation))]
+    [InlineData(typeof(TypeWithHashSetRelation))]
+    public void RelationDto_ManyDtos_MainNotFound_Collection_Test(Type blType)
     {
-        var masterDef = new DtoData(typeof(TypeWithEnumerableRelation), RelationStrategy.ReplaceToDtoProperty, "MasterDto");
+        var masterDef = new DtoData(blType, RelationStrategy.ReplaceToDtoProperty, "MasterDto");
         var relDefMain = new DtoData(typeof(TypeWithoutRelation), RelationStrategy.None, "RelationMainDto");
         var relDefNotMain = new DtoData(typeof(TypeWithoutRelation), RelationStrategy.None, "RelationNotMainDto");
 
@@ -223,10 +231,13 @@ public class ReplaceToDtoStrategyTests : BaseUnitTest
         AssertNoMasterDto(new[] { masterDef, relDefMain, relDefNotMain });
     }
     
-    [Fact]
-    public void RelationDto_ManyDtos_HasManyMain_Collection_Test()
+    [Theory]
+    [InlineData(typeof(TypeWithEnumerableRelation))]
+    [InlineData(typeof(TypeWithListRelation))]
+    [InlineData(typeof(TypeWithHashSetRelation))]
+    public void RelationDto_ManyDtos_HasManyMain_Collection_Test(Type blType)
     {
-        var masterDef = new DtoData(typeof(TypeWithEnumerableRelation), RelationStrategy.ReplaceToDtoProperty, "MasterDto");
+        var masterDef = new DtoData(blType, RelationStrategy.ReplaceToDtoProperty, "MasterDto");
         var relDefMain = new DtoData(typeof(TypeWithoutRelation), RelationStrategy.None, "RelationMainDto", GetMainAttr());
         var relDefNotMain = new DtoData(typeof(TypeWithoutRelation), RelationStrategy.None, "RelationNotMainDto", GetMainAttr());
 
