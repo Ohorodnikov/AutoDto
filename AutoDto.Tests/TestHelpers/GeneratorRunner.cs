@@ -99,7 +99,7 @@ public class GeneratorRunner
 
     public void Compile(CSharpCompilation compilation)
     {
-        using (var stream = new FileStream($"/{Guid.NewGuid()}.dll", FileMode.Create))
+        using (var stream = new FileStream($"../../../GeneratorInputDlls/{Guid.NewGuid()}.dll", FileMode.Create))
         {
             var result = compilation.Emit(stream);
             if (!result.Success)
