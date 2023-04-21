@@ -2,9 +2,11 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Reflection.Metadata;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading;
 using AutoDto.Setup;
+using AutoDto.SourceGen.Debounce;
 using AutoDto.SourceGen.DiagnosticMessages;
 using AutoDto.SourceGen.DiagnosticMessages.Errors;
 using AutoDto.SourceGen.DiagnosticMessages.Warnings;
@@ -27,8 +29,10 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 {
     private ITypeParser _parser;
     private IMetadataUpdaterHelper _updaterHelper;
+    private LogHelper _logger;
+    private Debouncer<ExcecutorData> _debouncer;
 
-    private class ClassData 
+    private class ClassData
     {
         public ClassData(INamedTypeSymbol typeSymbol, TypeDeclarationSyntax typeDeclaration)
         {
@@ -40,8 +44,27 @@ public class DtoFromBlGenerator : IIncrementalGenerator
         public TypeDeclarationSyntax TypeDeclaration { get; }
     }
 
+    private class ExcecutorData
+    {
+        public ExcecutorData(SourceProductionContext context, List<ClassData> classes)
+        {
+            Context = context;
+            Classes = classes;
+        }
+
+        public SourceProductionContext Context { get; }
+        public List<ClassData> Classes { get; }
+    }
+
+    private static int id = 0;
+    private int currId = 0;
     public DtoFromBlGenerator()
     {
+         currId = Interlocked.Increment(ref id);
+        _logger = new LogHelper(currId.ToString(), Process.GetCurrentProcess().Id.ToString());
+
+        _logger.Log("Create new on process " + Process.GetCurrentProcess().Id);
+
         _updaterHelper = new MetadataUpdaterHelper(
             new AttributeUpdaterFactory(),
             new IAllMetadatasUpdater[]
@@ -56,26 +79,68 @@ public class DtoFromBlGenerator : IIncrementalGenerator
             );
     }
 
+    public int DebonceTimeInSec { get; set; } = 5;
+    public bool AllowMultiInstance { get; set; } = false;
+
+    private static object _lock = new object();    
+
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
+        if (!AllowMultiInstance && currId != 1)
+            return;
+
+        if (_debouncer != null)
+            return;
+
+        lock (_lock)
+        {
+            if (_debouncer != null)
+                return;
+
+            _debouncer = new Debouncer<ExcecutorData>(ApplyGenerator, TimeSpan.FromSeconds(DebonceTimeInSec), _logger);
+        }
+
         context.RegisterSourceOutput(
-            CreateSyntaxProvider(context), 
-            (ctx, classes) => ApplyGenerator(ctx, classes));
+                CreateSyntaxProvider(context),
+                (ctx, classes) => _debouncer.RunAction(new ExcecutorData(ctx, classes.ToList())));
+
+        _logger.Log("Inited");
     }
 
     private IncrementalValueProvider<ImmutableArray<ClassData>> CreateSyntaxProvider(IncrementalGeneratorInitializationContext context)
     {
         return context.SyntaxProvider
             .CreateSyntaxProvider(
-                (node, _) => node is TypeDeclarationSyntax,
-                (sc, _) => new ClassData(sc.ToTypeSymbol(), (TypeDeclarationSyntax)sc.Node))
+                (node, _) =>
+                {
+                    //_logger.Log("Check node: " + node.GetType().Name);
+                    if (node is not TypeDeclarationSyntax td)
+                        return false;
+
+                    //_logger.Log("Check: " + td.Identifier.ToString());
+                    return true;
+                },
+                (sc, _) =>
+                {
+                    //_logger.Log("Collect: " + sc.ToTypeSymbol().Name);
+                    return new ClassData(sc.ToTypeSymbol(), (TypeDeclarationSyntax)sc.Node);
+                })
             .Where(x => _parser.CanParse(x.TypeDeclaration))
             .Collect();
     }
 
-    private void ApplyGenerator(SourceProductionContext context, IEnumerable<ClassData> classes)
+    private void ApplyGenerator(ExcecutorData data)
     {
-        var dtoTypeMetadatas = CreateMetadata(classes.ToList());
+        if (data == null)
+        {
+            _logger.Log("Cannot apply: data is null");
+            return;
+        }
+
+        var classes = data.Classes;
+        var context = data.Context;
+        _logger.Log("Apply: " + classes.Count);
+        var dtoTypeMetadatas = CreateMetadata(classes);
 
         _updaterHelper.ApplyCommonRules(dtoTypeMetadatas);
 
@@ -107,6 +172,8 @@ public class DtoFromBlGenerator : IIncrementalGenerator
     {
         if (metadata.DiagnosticMessages.Any(msg => msg.message.Severity == DiagnosticSeverity.Error))
             return;
+
+        //_logger.Log("Add source " + $"{metadata.Name}.g.cs");
 
         context.AddSource($"{metadata.Name}.g.cs", SourceText.From(metadata.ToClassString(), Encoding.UTF8));
     }
