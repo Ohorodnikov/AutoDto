@@ -88,8 +88,8 @@ public class DtoFromBlGenerator : IIncrementalGenerator
         var path = Path.Combine(Environment.CurrentDirectory, "Logs");
         Directory.CreateDirectory(path);
 
-        //if (LogHelper.Logger is null)
-        LogHelper.InitFileLogger(path);
+        if (LogHelper.Logger is null)
+            LogHelper.InitFileLogger(path);
 
         if (_debouncer != null)
             return;
@@ -104,9 +104,19 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 
         context.RegisterSourceOutput(
                 CreateSyntaxProvider(context),
-                (ctx, classes) => _debouncer.RunAction(new ExcecutorData(ctx, classes.ToList())));
+                (ctx, classes) => 
+                {
+                    try
+                    {
+                        _debouncer.RunAction(new ExcecutorData(ctx, classes.ToList()));
+                    }
+                    catch (Exception e)
+                    {
+                        LogHelper.Logger.Fatal(e, "Fatar error");
+                    }
+                });
 
-        LogHelper.Logger.Debug("Inited");
+        LogHelper.Logger.Debug("Generator inited");
     }
 
     private IncrementalValueProvider<ImmutableArray<ClassData>> CreateSyntaxProvider(IncrementalGeneratorInitializationContext context)
@@ -115,16 +125,15 @@ public class DtoFromBlGenerator : IIncrementalGenerator
             .CreateSyntaxProvider(
                 (node, _) =>
                 {
-                    //_logger.Log("Check node: " + node.GetType().Name);
+                    LogHelper.Logger.Verbose("Check node: {node}", node.GetType().Name);
                     if (node is not TypeDeclarationSyntax td)
                         return false;
 
-                    //_logger.Log("Check: " + td.Identifier.ToString());
                     return true;
                 },
                 (sc, _) =>
                 {
-                    //_logger.Log("Collect: " + sc.ToTypeSymbol().Name);
+                    LogHelper.Logger.Verbose("Collect: {node}", sc.ToTypeSymbol().Name);
                     return new ClassData(sc.ToTypeSymbol(), (TypeDeclarationSyntax)sc.Node);
                 })
             .Where(x => _parser.CanParse(x.TypeDeclaration))
@@ -175,9 +184,10 @@ public class DtoFromBlGenerator : IIncrementalGenerator
         if (metadata.DiagnosticMessages.Any(msg => msg.message.Severity == DiagnosticSeverity.Error))
             return;
 
-        //_logger.Log("Add source " + $"{metadata.Name}.g.cs");
+        var name = $"{metadata.Name}.g.cs";
+        LogHelper.Logger.Debug("Add source {name}", name);
 
-        context.AddSource($"{metadata.Name}.g.cs", SourceText.From(metadata.ToClassString(), Encoding.UTF8));
+        context.AddSource(name, SourceText.From(metadata.ToClassString(), Encoding.UTF8));
     }
 
     private void WriteMessages(IDtoTypeMetadata metadata, SourceProductionContext context)

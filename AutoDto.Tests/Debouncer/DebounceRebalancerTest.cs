@@ -2,7 +2,7 @@
 
 namespace AutoDto.Tests.Debouncer;
 
-public class DebounceRebalancerTest
+public class DebounceRebalancerTest : BaseUnitTest
 {
     private class RebalanceValue
     {

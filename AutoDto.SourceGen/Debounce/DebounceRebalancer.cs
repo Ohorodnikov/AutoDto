@@ -51,8 +51,9 @@ internal class DebounceRebalancer : IDebounceRebalancer
         {
             _avgValue = (_count * _avgValue + newValue) / (_count + 1);
 
-            //if (_count % 10 == 0)
-            //    _logger.Log("average time: " + _avgValue);
+            if (_count % 10 == 0)
+                LogHelper.Logger.Debug("Average time: {time}",_avgValue);
+
             IncementCount();
         }
 
