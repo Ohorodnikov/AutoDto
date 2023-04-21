@@ -1,4 +1,4 @@
-﻿//using Serilog;
+﻿using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -7,36 +7,27 @@ namespace AutoDto.SourceGen;
 
 internal class LogHelper
 {
-    //static ILogger logger;
-    //static LogHelper()
-    //{
-    //    logger = new LoggerConfiguration()
-    //        .WriteTo
-    //        .File(LogFilePath + "log.txt", outputTemplate: "{Message}{NewLine}")
-    //        .CreateLogger();
-    //}
-    public LogHelper(string id, string guid)
+    public static ILogger Logger { get; private set; }
+
+    public static void InitFileLogger(string path)
     {
-        this.id = id;
-        this.guid = guid;
+#if DEBUG
+        var logLevel = Serilog.Events.LogEventLevel.Debug;
+#else
+        var logLevel = Serilog.Events.LogEventLevel.Information;
+#endif
+
+        Logger = new LoggerConfiguration()
+            .WriteTo
+            .File(Path.Combine(path, "AutoDto.log"), logLevel, shared: true)
+            .CreateLogger();
     }
-    private const string LogFilePath = "C:/Data/CustomTools/AutoDto/AutoDto.SourceGen/Logs/";
-    private readonly string id;
-    private readonly string guid;
-    private List<string> messages = new List<string>();
-
-    private object _lock = new object();
-
-    public virtual void Log(string message)
+    
+    public static void InitDebugLogger()
     {
-        //var msg = 
-        //messages.Add($"{DateTime.Now.ToString("hh:mm:ss.fff")} : {message}");
-
-        var msg = $"{DateTime.Now.ToString("hh:mm:ss.fff")} : {id}_{guid} : {message}";
-
-        //logger.Information(msg);
-
-        File.AppendAllLines(LogFilePath + $"log{id}_{guid}.txt", new[] { msg });
-
+        Logger = new LoggerConfiguration()
+            .WriteTo
+            .Debug()
+            .CreateLogger();
     }
 }

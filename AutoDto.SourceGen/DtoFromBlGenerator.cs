@@ -29,7 +29,6 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 {
     private ITypeParser _parser;
     private IMetadataUpdaterHelper _updaterHelper;
-    private LogHelper _logger;
     private Debouncer<ExcecutorData> _debouncer;
 
     private class ClassData
@@ -61,9 +60,6 @@ public class DtoFromBlGenerator : IIncrementalGenerator
     public DtoFromBlGenerator()
     {
          currId = Interlocked.Increment(ref id);
-        _logger = new LogHelper(currId.ToString(), Process.GetCurrentProcess().Id.ToString());
-
-        _logger.Log("Create new on process " + Process.GetCurrentProcess().Id);
 
         _updaterHelper = new MetadataUpdaterHelper(
             new AttributeUpdaterFactory(),
@@ -79,7 +75,7 @@ public class DtoFromBlGenerator : IIncrementalGenerator
             );
     }
 
-    public int DebonceTimeInSec { get; set; } = 5;
+    public double DebonceTimeInMilisecocnds { get; set; } = 500;
     public bool AllowMultiInstance { get; set; } = false;
 
     private static object _lock = new object();    
@@ -89,6 +85,12 @@ public class DtoFromBlGenerator : IIncrementalGenerator
         if (!AllowMultiInstance && currId != 1)
             return;
 
+        var path = Path.Combine(Environment.CurrentDirectory, "Logs");
+        Directory.CreateDirectory(path);
+
+        //if (LogHelper.Logger is null)
+        LogHelper.InitFileLogger(path);
+
         if (_debouncer != null)
             return;
 
@@ -97,14 +99,14 @@ public class DtoFromBlGenerator : IIncrementalGenerator
             if (_debouncer != null)
                 return;
 
-            _debouncer = new Debouncer<ExcecutorData>(ApplyGenerator, TimeSpan.FromSeconds(DebonceTimeInSec), _logger);
+            _debouncer = new Debouncer<ExcecutorData>(ApplyGenerator, TimeSpan.FromMilliseconds(DebonceTimeInMilisecocnds));
         }
 
         context.RegisterSourceOutput(
                 CreateSyntaxProvider(context),
                 (ctx, classes) => _debouncer.RunAction(new ExcecutorData(ctx, classes.ToList())));
 
-        _logger.Log("Inited");
+        LogHelper.Logger.Debug("Inited");
     }
 
     private IncrementalValueProvider<ImmutableArray<ClassData>> CreateSyntaxProvider(IncrementalGeneratorInitializationContext context)
@@ -133,13 +135,13 @@ public class DtoFromBlGenerator : IIncrementalGenerator
     {
         if (data == null)
         {
-            _logger.Log("Cannot apply: data is null");
+            LogHelper.Logger.Warning("Cannot apply: data is null");
             return;
         }
 
         var classes = data.Classes;
         var context = data.Context;
-        _logger.Log("Apply: " + classes.Count);
+        LogHelper.Logger.Information("Apply for {count} classes", classes.Count);
         var dtoTypeMetadatas = CreateMetadata(classes);
 
         _updaterHelper.ApplyCommonRules(dtoTypeMetadatas);

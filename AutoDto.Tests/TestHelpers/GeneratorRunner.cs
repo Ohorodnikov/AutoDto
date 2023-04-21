@@ -37,7 +37,7 @@ public class GeneratorRunner
         Compile(compilation); //to see compile errs if any in code
 
         var gen = new DtoFromBlGenerator();
-        gen.DebonceTimeInSec = 2;
+        gen.DebonceTimeInMilisecocnds = 200;
         gen.AllowMultiInstance = true;
 
         var driver = CSharpGeneratorDriver.Create(new[] { gen });

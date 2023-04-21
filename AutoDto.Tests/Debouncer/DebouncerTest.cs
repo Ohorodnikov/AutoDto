@@ -9,20 +9,7 @@ using System.Threading.Tasks;
 
 namespace AutoDto.Tests.Debouncer;
 
-internal class LoggerMock : LogHelper
-{
-    public LoggerMock() : base("0", "0")
-    {
-    }
-
-    public override void Log(string message)
-    {
-        Debug.WriteLine(message);
-        return;
-    }
-}
-
-public class DebouncerTest
+public class DebouncerTest : BaseUnitTest
 {
     private class DebouncerData
     {
@@ -43,7 +30,7 @@ public class DebouncerTest
         }
 
         var d = new DebouncerData();
-        var debouncer = new Debouncer<DebouncerData>(ExecuteAction, TimeSpan.FromMilliseconds(ms), new LoggerMock(), false);
+        var debouncer = new Debouncer<DebouncerData>(ExecuteAction, TimeSpan.FromMilliseconds(ms), false);
 
         Parallel.For(0, 3, _ => 
         {
@@ -64,7 +51,7 @@ public class DebouncerTest
         }
 
         var d = new DebouncerData();
-        var debouncer = new Debouncer<DebouncerData>(ExecuteAction, TimeSpan.FromMilliseconds(300), new LoggerMock(), false);
+        var debouncer = new Debouncer<DebouncerData>(ExecuteAction, TimeSpan.FromMilliseconds(300), false);
 
         Parallel.For(0, 3, _ =>
         {

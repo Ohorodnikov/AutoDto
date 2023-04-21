@@ -12,15 +12,13 @@ internal class Debouncer<TData> : IDisposable
     where TData : class
 {
     private readonly Action<TData> _action;
-    private readonly LogHelper _logHelper;
     private readonly IDebounceRebalancer _rebalancer;
     private Timer _timer;
     private object _lock = new object();
 
-    public Debouncer(Action<TData> action, TimeSpan period, LogHelper logHelper, bool enableBalancer = true)
+    public Debouncer(Action<TData> action, TimeSpan period, bool enableBalancer = true)
     {
         _action = action;
-        _logHelper = logHelper;
         _runEvents = new ConcurrentStack<RunEvent>();
 
         var rebalancerOpts = new DebounceRebalancer.Options
@@ -42,7 +40,7 @@ internal class Debouncer<TData> : IDisposable
 
     private void InitTimer(double periodInMs)
     {
-        _logHelper.Log("Change period on " + periodInMs);
+        LogHelper.Logger.Warning("Change period on {period} ms", periodInMs);
 
         if (periodInMs < 250)
         {
@@ -58,13 +56,13 @@ internal class Debouncer<TData> : IDisposable
 
     private Timer CreateNewTimer(double periodInMs)
     {
-        _logHelper.Log($"Create timer for {periodInMs} ms");
+        LogHelper.Logger.Information("Create timer for {periodInMs} ms", periodInMs);
         return new Timer((q) => Excecute(true), null, TimeSpan.Zero, TimeSpan.FromMilliseconds(periodInMs));
     }
 
     private void KillCurrentTimer()
     {
-        _logHelper.Log("Kill timer and start sync mode");
+        LogHelper.Logger.Information("Kill timer and start sync mode");
         _timer?.Dispose();
         _timer = null;
     }
@@ -87,11 +85,11 @@ internal class Debouncer<TData> : IDisposable
             {
                 if (inTimer)
                 {
-                    _logHelper.Log("Run action in timer: " + runEvent.Id.ToString());
+                    LogHelper.Logger.Debug("Run action in timer: {id}", runEvent.Id);
                 }
                 else
                 {
-                    _logHelper.Log("Run action NOW: " + runEvent.Id.ToString());
+                    LogHelper.Logger.Debug("Run action NOW: {id}", runEvent.Id);
                 }
                 sw.Start();
                 _action(runEvent.Data);
@@ -99,8 +97,7 @@ internal class Debouncer<TData> : IDisposable
             }
             catch (Exception e)
             {
-                _logHelper.Log(e.Message);
-                //LogHelper.Log(e.StackTrace);
+                LogHelper.Logger.Error(e, "error happened");
             }
 
             while (_runEvents.TryPop(out var v))
@@ -135,7 +132,7 @@ internal class Debouncer<TData> : IDisposable
         
         _runEvents.Push(runEvent);
 
-        _logHelper.Log("Publish event: " + runEvent.Id.ToString());
+        LogHelper.Logger.Information("Publish event: " + runEvent.Id.ToString());
 
         return runEvent;
     }
@@ -155,7 +152,7 @@ internal class Debouncer<TData> : IDisposable
             Thread.Sleep(50);
         }
 
-        _logHelper.Log($"Event {runEvent.Id} finished");
+        LogHelper.Logger.Information($"Event {runEvent.Id} finished");
     }
 
     public void Dispose()
