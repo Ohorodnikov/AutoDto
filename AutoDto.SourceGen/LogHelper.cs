@@ -14,7 +14,7 @@ internal class LogHelper
 #if DEBUG
         var logLevel = Serilog.Events.LogEventLevel.Debug;
 #else
-        var logLevel = Serilog.Events.LogEventLevel.Information;
+        var logLevel = Serilog.Events.LogEventLevel.Warning;
 #endif
 
         Logger = new LoggerConfiguration()
