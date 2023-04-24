@@ -1,9 +1,12 @@
 ﻿using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Reflection.Metadata;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading;
 using AutoDto.Setup;
+using AutoDto.SourceGen.Debounce;
 using AutoDto.SourceGen.DiagnosticMessages;
 using AutoDto.SourceGen.DiagnosticMessages.Errors;
 using AutoDto.SourceGen.DiagnosticMessages.Warnings;
@@ -22,13 +25,42 @@ using Microsoft.CodeAnalysis.Text;
 namespace AutoDto.SourceGen;
 
 [Generator]
-public class DtoFromBlGenerator : ISourceGenerator
+public class DtoFromBlGenerator : IIncrementalGenerator
 {
     private ITypeParser _parser;
     private IMetadataUpdaterHelper _updaterHelper;
+    private Debouncer<ExcecutorData> _debouncer;
 
+    private class ClassData
+    {
+        public ClassData(INamedTypeSymbol typeSymbol, TypeDeclarationSyntax typeDeclaration)
+        {
+            TypeSymbol = typeSymbol;
+            TypeDeclaration = typeDeclaration;
+        }
+
+        public INamedTypeSymbol TypeSymbol { get; }
+        public TypeDeclarationSyntax TypeDeclaration { get; }
+    }
+
+    private class ExcecutorData
+    {
+        public ExcecutorData(SourceProductionContext context, List<ClassData> classes)
+        {
+            Context = context;
+            Classes = classes;
+        }
+
+        public SourceProductionContext Context { get; }
+        public List<ClassData> Classes { get; }
+    }
+
+    private static int id = 0;
+    private int currId = 0;
     public DtoFromBlGenerator()
     {
+         currId = Interlocked.Increment(ref id);
+
         _updaterHelper = new MetadataUpdaterHelper(
             new AttributeUpdaterFactory(),
             new IAllMetadatasUpdater[]
@@ -38,22 +70,88 @@ public class DtoFromBlGenerator : ISourceGenerator
             });
 
         _parser = new TypeParser.TypeParser(
-            new AttributeDataReader(new AttributeDataFactory()), 
-            _updaterHelper     
+            new AttributeDataReader(new AttributeDataFactory()),
+            _updaterHelper
             );
     }
 
-    public void Initialize(GeneratorInitializationContext context)
-    {
-        context.RegisterForSyntaxNotifications(() => new SyntaxReceiver(_parser));
-    }
+    public double DebonceTimeInMilisecocnds { get; set; } = 500;
+    public bool AllowMultiInstance { get; set; } = false;
 
-    public void Execute(GeneratorExecutionContext context)
+    private static object _lock = new object();    
+
+    public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        if (!(context.SyntaxReceiver is SyntaxReceiver receiver))
+        if (!AllowMultiInstance && currId != 1)
             return;
 
-        var dtoTypeMetadatas = CreateMetadata(receiver.DtoDeclarations, context);
+        var path = Path.Combine(Environment.CurrentDirectory, "Logs");
+        Directory.CreateDirectory(path);
+
+        if (LogHelper.Logger is null)
+            LogHelper.InitFileLogger(path);
+
+        if (_debouncer != null)
+            return;
+
+        lock (_lock)
+        {
+            if (_debouncer != null)
+                return;
+
+            _debouncer = new Debouncer<ExcecutorData>(ApplyGenerator, TimeSpan.FromMilliseconds(DebonceTimeInMilisecocnds));
+        }
+
+        context.RegisterSourceOutput(
+                CreateSyntaxProvider(context),
+                (ctx, classes) => 
+                {
+                    try
+                    {
+                        _debouncer.RunAction(new ExcecutorData(ctx, classes.ToList()));
+                    }
+                    catch (Exception e)
+                    {
+                        LogHelper.Logger.Fatal(e, "Fatar error");
+                    }
+                });
+
+        LogHelper.Logger.Debug("Generator inited");
+    }
+
+    private IncrementalValueProvider<ImmutableArray<ClassData>> CreateSyntaxProvider(IncrementalGeneratorInitializationContext context)
+    {
+        return context.SyntaxProvider
+            .CreateSyntaxProvider(
+                (node, _) =>
+                {
+                    LogHelper.Logger.Verbose("Check node: {node}", node.GetType().Name);
+                    if (node is not TypeDeclarationSyntax td)
+                        return false;
+
+                    return true;
+                },
+                (sc, _) =>
+                {
+                    LogHelper.Logger.Verbose("Collect: {node}", sc.ToTypeSymbol().Name);
+                    return new ClassData(sc.ToTypeSymbol(), (TypeDeclarationSyntax)sc.Node);
+                })
+            .Where(x => _parser.CanParse(x.TypeDeclaration))
+            .Collect();
+    }
+
+    private void ApplyGenerator(ExcecutorData data)
+    {
+        if (data == null)
+        {
+            LogHelper.Logger.Warning("Cannot apply: data is null");
+            return;
+        }
+
+        var classes = data.Classes;
+        var context = data.Context;
+        LogHelper.Logger.Information("Apply for {count} classes", classes.Count);
+        var dtoTypeMetadatas = CreateMetadata(classes);
 
         _updaterHelper.ApplyCommonRules(dtoTypeMetadatas);
 
@@ -65,16 +163,13 @@ public class DtoFromBlGenerator : ISourceGenerator
         }
     }
 
-    private Dictionary<string, List<IDtoTypeMetadata>> CreateMetadata(List<SyntaxNode> dtoDeclarations, GeneratorExecutionContext context)
+    private Dictionary<string, List<IDtoTypeMetadata>> CreateMetadata(List<ClassData> classes)
     {
-        var dtoTypeMetadatas = new Dictionary<string, List<IDtoTypeMetadata>>(dtoDeclarations.Count);
+        var dtoTypeMetadatas = new Dictionary<string, List<IDtoTypeMetadata>>(classes.Count);
 
-        foreach (var declaration in dtoDeclarations)
+        foreach (var classData in classes)
         {
-            var semanticModel = context.Compilation.GetSemanticModel(declaration.SyntaxTree);
-            var dtoSymbol = (INamedTypeSymbol)semanticModel.GetDeclaredSymbol(declaration);
-
-            var md = _parser.Parse(dtoSymbol, declaration);
+            var md = _parser.Parse(classData.TypeSymbol, classData.TypeDeclaration);
 
             var currentBlTypeStore = dtoTypeMetadatas.GetOrAdd(md.BlFullName, () => new List<IDtoTypeMetadata>());
 
@@ -84,38 +179,24 @@ public class DtoFromBlGenerator : ISourceGenerator
         return dtoTypeMetadatas;
     }
 
-    private void AddSourceIfNoErrors(IDtoTypeMetadata metadata, GeneratorExecutionContext context)
+    private void AddSourceIfNoErrors(IDtoTypeMetadata metadata, SourceProductionContext context)
     {
         if (metadata.DiagnosticMessages.Any(msg => msg.message.Severity == DiagnosticSeverity.Error))
             return;
 
-        context.AddSource($"{metadata.Name}.g.cs", SourceText.From(metadata.ToClassString(), Encoding.UTF8));
+        var name = $"{metadata.Name}.g.cs";
+        LogHelper.Logger.Debug("Add source {name}", name);
+
+        context.AddSource(name, SourceText.From(metadata.ToClassString(), Encoding.UTF8));
     }
 
-    private void WriteMessages(IDtoTypeMetadata metadata, GeneratorExecutionContext context)
+    private void WriteMessages(IDtoTypeMetadata metadata, SourceProductionContext context)
     {
         foreach (var message in metadata.DiagnosticMessages)
         {
             var location = message.location ?? metadata.Location ?? Location.None;
             var msg = message.message;
             context.ReportDiagnostic(Diagnostic.Create(msg.AsDiagnosticDescriptor(), location, msg.Parameters));
-        }
-    }
-
-    private class SyntaxReceiver : ISyntaxReceiver
-    {
-        private readonly ITypeParser _parser;
-        public SyntaxReceiver(ITypeParser typeParser)
-        {
-            _parser = typeParser;
-        }
-
-        public List<SyntaxNode> DtoDeclarations { get; } = new();
-
-        public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
-        {
-            if (_parser.CanParse(syntaxNode))
-                DtoDeclarations.Add(syntaxNode);
         }
     }
 }

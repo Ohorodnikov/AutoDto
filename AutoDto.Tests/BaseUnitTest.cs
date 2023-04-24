@@ -21,6 +21,8 @@ public abstract class BaseUnitTest
         SyntaxChecker = new SyntaxChecker();
         DtoCreator = new DtoCodeCreator();
         Generator = new GeneratorRunner();
+
+        LogHelper.InitDebugLogger();
     }
 
     protected SyntaxChecker SyntaxChecker { get; }

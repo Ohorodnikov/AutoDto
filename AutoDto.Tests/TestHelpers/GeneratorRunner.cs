@@ -36,7 +36,11 @@ public class GeneratorRunner
 
         Compile(compilation); //to see compile errs if any in code
 
-        var driver = CSharpGeneratorDriver.Create(new[] { new DtoFromBlGenerator() });
+        var gen = new DtoFromBlGenerator();
+        gen.DebonceTimeInMilisecocnds = 200;
+        gen.AllowMultiInstance = true;
+
+        var driver = CSharpGeneratorDriver.Create(new[] { gen });
 
         driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
 
@@ -99,7 +103,7 @@ public class GeneratorRunner
 
     public void Compile(CSharpCompilation compilation)
     {
-        using (var stream = new FileStream($"/{Guid.NewGuid()}.dll", FileMode.Create))
+        using (var stream = new FileStream($"../../../GeneratorInputDlls/{Guid.NewGuid()}.dll", FileMode.Create))
         {
             var result = compilation.Emit(stream);
             if (!result.Success)
