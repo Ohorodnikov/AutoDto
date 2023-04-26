@@ -8,7 +8,7 @@ var bl = new Entity1
 
 var ent1Dto = new Entity1Dto
 {
-    A = bl.A,    
+    A = bl.A,
 };
 
 var withEnumer = new EntityWithEnumerableRelDto_Replace2Dto

@@ -36,7 +36,7 @@ public class GeneratorRunner
 
         Compile(compilation); //to see compile errs if any in code
 
-        var driver = CSharpGeneratorDriver.Create(new[] { new DtoFromBlGenerator() });
+        var driver = CSharpGeneratorDriver.Create(new[] { new DtoFromBlGenerator(true) });
 
         driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
 
@@ -86,7 +86,12 @@ public class GeneratorRunner
         var asms = new[]
         {
             typeof(BaseUnitTest).Assembly,
-            typeof(DtoFromAttribute).Assembly
+            typeof(DtoFromAttribute).Assembly,
+
+            typeof(Serilog.ILogger).Assembly,
+            typeof(Serilog.LoggerSinkConfigurationDebugExtensions).Assembly,
+            typeof(Serilog.FileLoggerConfigurationExtensions).Assembly,
+
         };
 
         return CreateFromAsms(asms);
@@ -99,7 +104,7 @@ public class GeneratorRunner
 
     public void Compile(CSharpCompilation compilation)
     {
-        using (var stream = new FileStream($"/{Guid.NewGuid()}.dll", FileMode.Create))
+        using (var stream = new FileStream($"../../../GeneratorInputDlls/{Guid.NewGuid()}.dll", FileMode.Create))
         {
             var result = compilation.Emit(stream);
             if (!result.Success)

@@ -33,7 +33,7 @@ public class DtoIgnoreAttributeTests : BaseCompilerMessageTests
         var (trees, msgs) = RunTest(WripInQuotes(invalidPropName));
 
         Assert.Equal(2, trees.Count());
-        Assert.Equal(1, msgs.Length);
+        Assert.Single(msgs);
 
         var msg = msgs[0];
         Assert.Equal(DiagnosticSeverity.Warning, msg.Severity);
@@ -46,7 +46,7 @@ public class DtoIgnoreAttributeTests : BaseCompilerMessageTests
         var (trees, msgs) = RunTest(WripInQuotes(""));
 
         Assert.Equal(2, trees.Count());
-        Assert.Equal(1, msgs.Length);
+        Assert.Single(msgs);
 
         var expected = new NotFoundPropertyInBlWarn("", "");
 
@@ -58,8 +58,8 @@ public class DtoIgnoreAttributeTests : BaseCompilerMessageTests
     {
         var (trees, msgs) = RunTest("");
 
-        Assert.Equal(1, trees.Count());
-        Assert.Equal(1, msgs.Length);
+        Assert.Single(trees);
+        Assert.Single(msgs);
 
         var expected = new AttributeValueNotSetError();
 
@@ -71,8 +71,8 @@ public class DtoIgnoreAttributeTests : BaseCompilerMessageTests
     {
         var (trees, msgs) = RunTest("null");
 
-        Assert.Equal(1, trees.Count());
-        Assert.Equal(1, msgs.Length);
+        Assert.Single(trees);
+        Assert.Single(msgs);
 
         var expected = new AttributeNullError();
 
@@ -101,9 +101,9 @@ namespace AutoDto.Tests.Dto;
 
         var result = Generator.RunWithMsgs(code);
 
-        Assert.Equal(1, result.compilation.SyntaxTrees.Count());
+        Assert.Single(result.compilation.SyntaxTrees);
 
-        Assert.Equal(1, result.compileMsgs.Length);
+        Assert.Single(result.compileMsgs);
 
         var expected = new AttributeValueNotSetError();
 

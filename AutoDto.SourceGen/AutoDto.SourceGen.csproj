@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <Authors>Vladyslav Ohorodnikov</Authors>
-    <VersionPrefix>1.0.8</VersionPrefix>
+    <VersionPrefix>2.0.0-beta-3</VersionPrefix>
     <Description>Auto copy properties from bl mode to dto</Description>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/Ohorodnikov/AutoDto</RepositoryUrl>
@@ -10,7 +10,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>10.0</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>    
+    <Nullable>disable</Nullable>    
     <Title>AutoDto</Title>
     <PackageId>AutoDto</PackageId>
     <Product>AutoDto</Product>
@@ -21,15 +21,18 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.5.0" />
+    <PackageReference Include="Serilog" Version="2.12.0" PrivateAssets="all" GeneratePathProperty="true" />
+    <PackageReference Include="Serilog.Sinks.Debug" Version="2.0.0" PrivateAssets="all" GeneratePathProperty="true" />
+    <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" PrivateAssets="all" GeneratePathProperty="true" />
   </ItemGroup>
-<PropertyGroup>
-    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-</PropertyGroup>
   <ItemGroup>
     <Folder Include="DiagnosticMessages\Infos\" />
   </ItemGroup>
     <ItemGroup>
         <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+        <None Include="$(PkgSerilog)\lib\netstandard2.0\*.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+        <None Include="$(PkgSerilog_Sinks_Debug)\lib\netstandard2.0\*.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+        <None Include="$(PkgSerilog_Sinks_File)\lib\netstandard2.0\*.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     </ItemGroup>
   <ItemGroup>
     <None Include="..\README.md">

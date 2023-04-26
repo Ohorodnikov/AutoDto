@@ -70,7 +70,9 @@ public class BaseDtoWithConflictedMembers : BaseEmptyDto
 
 public class BaseDtoWithConflictedMembers_NotError : BaseEmptyDto
 {
+#pragma warning disable CS0169 // The field 'BaseDtoWithConflictedMembers_NotError.Name1' is never used
     private string Name1;
+#pragma warning restore CS0169 // The field 'BaseDtoWithConflictedMembers_NotError.Name1' is never used
     protected string Name2;
 
     private string Name3 { get; set;}

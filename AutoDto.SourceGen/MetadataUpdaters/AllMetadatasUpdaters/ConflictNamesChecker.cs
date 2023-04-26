@@ -12,6 +12,7 @@ internal class ConflictNamesChecker : IAllMetadatasUpdater
 {
     public void UpdateAllMetadata(Dictionary<string, List<IDtoTypeMetadata>> metadatas)
     {
+        LogHelper.Logger.Information("Apply ConflictNamesChecker");
         foreach (var metadata in metadatas.SelectMany(x => x.Value))
         {
             CheckOwnMembers(metadata);

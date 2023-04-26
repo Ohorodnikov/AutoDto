@@ -28,6 +28,8 @@ internal class DtoFromData : DtoAttributeData
         BlTypeSymbol = typeSymbol;
 
         Properties = GetProperties(typeSymbol);
+
+        LogHelper.Logger.Information("Set bl type as {blName} with {propCount} properties", typeSymbol.Name, Properties.Count());
     }
 
     private IEnumerable<IPropertySymbol> GetProperties(INamedTypeSymbol typeSymbol)
@@ -47,5 +49,7 @@ internal class DtoFromData : DtoAttributeData
         Enum.TryParse<RelationStrategy>(parameter.Value.ToString(), out var strategy);
 
         RelationStrategy = strategy;
+
+        LogHelper.Logger.Information("Set relation strategy {strategy}", strategy);
     }
 }

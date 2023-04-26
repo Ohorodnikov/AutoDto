@@ -99,7 +99,7 @@ public class SyntaxChecker
     {
         var modifiers = property.Modifiers;
 
-        Assert.Equal(1, modifiers.Count);
+        Assert.Single(modifiers);
 
         Assert.Equal(SyntaxKind.PublicKeyword, modifiers[0].Kind());
 

@@ -54,7 +54,7 @@ public class IgnorePropTest : BaseUnitTest
 
         var trees = Generator.Run(code).SyntaxTrees;
 
-        Assert.Equal(1, trees.Count());
+        Assert.Single(trees);
     }
 
     private void RunTest(string attributeDef, string[] ignoredProps)

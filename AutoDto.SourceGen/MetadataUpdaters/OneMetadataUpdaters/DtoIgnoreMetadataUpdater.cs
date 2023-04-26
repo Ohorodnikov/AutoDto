@@ -20,7 +20,7 @@ internal class DtoIgnoreMetadataUpdater : AttributeMetadataUpdater<DtoIgnoreData
                 attributeData.DiagnosticMessages.Add(new NotFoundPropertyInBlWarn(prop2Ignore, metadata.BlFullName));
                 continue;
             }
-
+            LogHelper.Logger.Verbose("Remove {propName} as ignored", prop2Ignore);
             metadata.Properties.Remove(removeItem);
         }
 

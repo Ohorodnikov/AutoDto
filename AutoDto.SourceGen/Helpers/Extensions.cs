@@ -8,6 +8,10 @@ namespace AutoDto.SourceGen.Helpers;
 
 internal static class Extensions
 {
+    public static INamedTypeSymbol ToTypeSymbol(this GeneratorSyntaxContext syntaxContext)
+    {
+        return (INamedTypeSymbol)syntaxContext.SemanticModel.GetDeclaredSymbol(syntaxContext.Node);
+    }
     public static TValue GetOrAdd<TKey, TValue>(this Dictionary<TKey, TValue> dictionary, TKey key, Func<TValue> valueFunc)
     {
         if (dictionary.TryGetValue(key, out TValue value))
