@@ -14,7 +14,7 @@ internal class FileLoggerConfig : IConfig
 #endif
         Options = new List<IOption>
         {
-            OptionFactory.New("enabled", true, SetIsEnabled),
+            OptionFactory.New("enabled", false, SetIsEnabled),
             OptionFactory.New("log_level", defLogLevel, SetLogLevel),
             OptionFactory.New("folder_path", defaultFolder, SetFolderPath),
         };
