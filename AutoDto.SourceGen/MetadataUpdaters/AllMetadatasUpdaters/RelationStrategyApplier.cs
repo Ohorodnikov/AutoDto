@@ -12,8 +12,16 @@ internal class RelationStrategyApplier : IAllMetadatasUpdater
 {
     public void UpdateAllMetadata(Dictionary<string, List<IDtoTypeMetadata>> metadatas)
     {
+        LogHelper.Logger.Information("Apply RelationStrategyApplier");
+
         foreach (var metadata in metadatas.SelectMany(x => x.Value))
-            FindStrategyApplier(metadata.RelationStrategy).Apply(metadata, metadatas);
+        {
+            var applier = FindStrategyApplier(metadata.RelationStrategy);
+
+            LogHelper.Logger.Debug("Apply {applier} for type {dtoType}", applier.GetType().Name, metadata.Name);
+
+            applier.Apply(metadata, metadatas);
+        }   
     }
 
     private IStrategyApplier FindStrategyApplier(RelationStrategy relationStrategy)

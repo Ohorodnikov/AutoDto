@@ -9,7 +9,7 @@ root = true
 # logger #
 auto_dto.logger.folder_path = C:\Data\CustomTools\AutoDto\AutoDto.Example
 auto_dto.logger.enabled = true
-auto_dto.logger.log_level = Debug
+#auto_dto.logger.log_level = Debug
 
 # debounce #
 auto_dto.debounce.enabled = true

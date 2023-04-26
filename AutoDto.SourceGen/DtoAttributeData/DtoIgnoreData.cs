@@ -44,5 +44,7 @@ internal class DtoIgnoreData : DtoAttributeData
             }
             IgnoredProperties.Add(ignoredProp);
         }
+
+        LogHelper.Logger.Information("Add {count} properties as ignored", IgnoredProperties.Count);
     }
 }

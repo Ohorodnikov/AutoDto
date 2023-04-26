@@ -40,13 +40,22 @@ internal class MetadataUpdaterHelper : IMetadataUpdaterHelper
 
     public void InitByAttribute(IDtoTypeMetadata metadata, IDtoAttributeData attributeData)
     {
-        _attributeUpdaterFactory
-            .GetUpdater(attributeData)
-            .Update(metadata, attributeData);
+        var updater = _attributeUpdaterFactory.GetUpdater(attributeData);
+
+        if (updater == null)
+        {
+            LogHelper.Logger.Warning("Cannot find attribute updater for attribute data {name}", attributeData.GetType().Name);
+            return;
+        }
+
+        LogHelper.Logger.Verbose("Apply {updater} for {attrData}", updater.GetType().Name, attributeData.GetType().Name);
+
+        updater.Update(metadata, attributeData);
     }
 
     public void ApplyCommonRules(Dictionary<string, List<IDtoTypeMetadata>> metadatas)
     {
+        LogHelper.Logger.Debug("Apply rules for all metadatas");
         foreach (var updater in _allMetadataUpdaters)
             updater.UpdateAllMetadata(metadatas);
     }

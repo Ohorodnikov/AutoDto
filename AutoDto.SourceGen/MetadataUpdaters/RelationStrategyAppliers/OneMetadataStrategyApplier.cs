@@ -87,8 +87,11 @@ internal abstract class OneMetadataStrategyApplier : IStrategyApplier
         {
             var relMd = GetRelationMetadata(prop);
 
-            if (relMd != null)
-                propsWithId.Add((prop, relMd));
+            if (relMd == null)
+                continue;
+
+            LogHelper.Logger.Verbose("Find relation metadata {relName} for property {propName}", relMd.Name, prop.Name);
+            propsWithId.Add((prop, relMd));
         }
 
         return propsWithId;

@@ -81,16 +81,21 @@ internal class TypeParser : ITypeParser
         var attrDatas = new List<IDtoAttributeData>();
 
         foreach (var item in namedType.GetAttributes())
+        {
+            LogHelper.Logger.Verbose("Process attribute {attrName} in type {typeName}", item.AttributeClass.ToDisplayString(), namedType.Name);
             if (_attributeDataReader.TryRead(item, out var data))
                 attrDatas.Add(data);
+        }   
 
         return attrDatas;
     }
 
     private void ValidateDeclaration(IDtoTypeMetadata metadata)
     {
-        if (!IsTypeHasPartialKeyword(metadata.TypeDeclaration))
-            metadata.DiagnosticMessages.Add((metadata.Location, new DtoNotPartialError(metadata.Name)));
+        if (IsTypeHasPartialKeyword(metadata.TypeDeclaration))
+            return;
+
+        metadata.DiagnosticMessages.Add((metadata.Location, new DtoNotPartialError(metadata.Name)));
     }
 
     private bool IsTypeHasPartialKeyword(TypeDeclarationSyntax typeDeclaration)

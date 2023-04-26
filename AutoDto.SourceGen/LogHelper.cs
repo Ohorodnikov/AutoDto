@@ -26,7 +26,7 @@ internal class LogHelper
     }
 
     /// <summary>
-    /// Must be used when not shure if logger was already inited
+    /// Must be used when not sure if logger was already inited
     /// </summary>
     /// <param name="level"></param>
     /// <param name="template"></param>

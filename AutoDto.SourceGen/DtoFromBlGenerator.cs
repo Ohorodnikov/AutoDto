@@ -103,6 +103,8 @@ public class DtoFromBlGenerator : IIncrementalGenerator
                         LogHelper.Logger?.Error(e, "Unhandled error");
                     }
                 });
+
+        LogHelper.Log(LogEventLevel.Information, "Generator inited in process {id}", Process.GetCurrentProcess().Id);
     }
 
     private void Execute(SourceProductionContext ctx, ImmutableArray<ClassData> classes, AnalyzerConfigOptionsProvider analyzer)
@@ -122,12 +124,15 @@ public class DtoFromBlGenerator : IIncrementalGenerator
         if (classes == null || classes.Length == 0)
             return;
 
-        if (!GlobalConfig.Instance.IsInited)
+        if (GlobalConfig.Instance.IsInited)
         {
-            var editorValues = analyzer.GetOptions(classes[0].TypeDeclaration.SyntaxTree);
-
-            GlobalConfig.Instance.Init(editorValues);
+            LogHelper.Log(LogEventLevel.Verbose, "Options are already inited");
+            return;
         }
+
+        var editorValues = analyzer.GetOptions(classes[0].TypeDeclaration.SyntaxTree);
+
+        GlobalConfig.Instance.Init(editorValues);
     }
 
     private IncrementalValueProvider<ImmutableArray<ClassData>> CreateSyntaxProvider(IncrementalGeneratorInitializationContext context)
@@ -153,6 +158,8 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 
     private void ApplyGenerator(ExecutorData data)
     {
+        LogHelper.Logger.Verbose("#### Start generator executing ####");
+
         if (data == null)
         {
             LogHelper.Logger.Warning("Cannot apply: data is null");
@@ -180,11 +187,15 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 
         foreach (var classData in classes)
         {
+            LogHelper.Logger.Verbose("Create metadata for class {class}", classData.TypeSymbol.Name);
+
             var md = _parser.Parse(classData.TypeSymbol, classData.TypeDeclaration);
 
-            var currentBlTypeStore = dtoTypeMetadatas.GetOrAdd(md.BlFullName, () => new List<IDtoTypeMetadata>());
+            LogHelper.Logger.Debug("Successfully parsed {dtoType} with master type {blType}", md.Name, md.BlFullName);
 
-            currentBlTypeStore.Add(md);
+            dtoTypeMetadatas
+                .GetOrAdd(md.BlFullName, () => new List<IDtoTypeMetadata>())
+                .Add(md);
         }
 
         return dtoTypeMetadatas;

@@ -26,20 +26,29 @@ internal class AttributeDataReader : IAttributeDataReader
         if (attribute == null)
             return false;
 
+        var attrName = attribute.AttributeClass.ToDisplayString();
+
         attributeData = _dataFactory.Get(attribute);
 
         if (attributeData == null)
+        {
+            LogHelper.Logger.Information("Attribute {attrName} is not supported", attrName);
             return false;
+        }
+
+        LogHelper.Logger.Information("Init attribute {attrName}", attrName);
 
         attributeData.Location = attribute.ApplicationSyntaxReference.GetSyntax().GetLocation();
 
         var ctorArgs = attribute.ConstructorArguments;
 
         for (int i = 0; i < ctorArgs.Length; i++)
-            attributeData.InitOneValue(i, ctorArgs[i]);
+        {
+            var arg = ctorArgs[i];
+            LogHelper.Logger.Debug("Init {i} param", i);
+            attributeData.InitOneValue(i, arg);
+        }
 
         return true;
     }
 }
-
-
