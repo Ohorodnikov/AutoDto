@@ -36,11 +36,7 @@ public class GeneratorRunner
 
         Compile(compilation); //to see compile errs if any in code
 
-        var gen = new DtoFromBlGenerator();
-        gen.DebonceTimeInMilisecocnds = 200;
-        gen.AllowMultiInstance = true;
-
-        var driver = CSharpGeneratorDriver.Create(new[] { gen });
+        var driver = CSharpGeneratorDriver.Create(new[] { new DtoFromBlGenerator(true) });
 
         driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
 
@@ -90,7 +86,12 @@ public class GeneratorRunner
         var asms = new[]
         {
             typeof(BaseUnitTest).Assembly,
-            typeof(DtoFromAttribute).Assembly
+            typeof(DtoFromAttribute).Assembly,
+
+            typeof(Serilog.ILogger).Assembly,
+            typeof(Serilog.LoggerSinkConfigurationDebugExtensions).Assembly,
+            typeof(Serilog.FileLoggerConfigurationExtensions).Assembly,
+
         };
 
         return CreateFromAsms(asms);

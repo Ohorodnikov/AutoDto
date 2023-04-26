@@ -8,8 +8,26 @@ using System.Text;
 
 namespace AutoDto.SourceGen.Debounce;
 
-internal class Debouncer<TData> : IDisposable
-    where TData : class
+internal interface IDebouncer<TData> where TData : class
+{
+    void RunAction(TData data);
+}
+
+internal class DebouncerFake<TData> : IDebouncer<TData> where TData : class
+{
+    private readonly Action<TData> _action;
+
+    public DebouncerFake(Action<TData> action)
+    {
+        _action = action;
+    }
+    public void RunAction(TData data)
+    {
+        _action(data);
+    }
+}
+
+internal class Debouncer<TData> : IDisposable, IDebouncer<TData> where TData : class
 {
     private readonly Action<TData> _action;
     private readonly IDebounceRebalancer _rebalancer;
@@ -51,13 +69,13 @@ internal class Debouncer<TData> : IDisposable
         if (IsTimerAlive())
             _timer.Change(TimeSpan.Zero, TimeSpan.FromMilliseconds(periodInMs));
         else
-        _timer = CreateNewTimer(periodInMs);
+            _timer = CreateNewTimer(periodInMs);
     }
 
     private Timer CreateNewTimer(double periodInMs)
     {
         LogHelper.Logger.Information("Create timer for {periodInMs} ms", periodInMs);
-        return new Timer((q) => Excecute(), null, TimeSpan.Zero, TimeSpan.FromMilliseconds(periodInMs));
+        return new Timer((q) => Execute(), null, TimeSpan.Zero, TimeSpan.FromMilliseconds(periodInMs));
     }
 
     private void KillCurrentTimer()
@@ -67,7 +85,7 @@ internal class Debouncer<TData> : IDisposable
         _timer = null;
     }
 
-    private void Excecute()
+    private void Execute()
     {
         if (_runEvents.Count == 0)
             return;
@@ -80,11 +98,11 @@ internal class Debouncer<TData> : IDisposable
             if (!_runEvents.TryPeek(out var runEvent))
                 return;
 
-            var sw = new Stopwatch();            
+            var sw = new Stopwatch();
             try
             {
                 LogHelper.Logger.Debug("Run event: {id}", runEvent.Id);
-                
+
                 sw.Start();
                 _action(runEvent.Data);
             }
@@ -92,9 +110,9 @@ internal class Debouncer<TData> : IDisposable
             {
                 LogHelper.Logger.Error(e, "error happened");
             }
-            finally 
-            { 
-                sw.Stop(); 
+            finally
+            {
+                sw.Stop();
             }
 
             while (_runEvents.TryPop(out var v))
@@ -126,7 +144,7 @@ internal class Debouncer<TData> : IDisposable
     private RunEvent PublishEvent(TData data)
     {
         var runEvent = new RunEvent(data);
-        
+
         _runEvents.Push(runEvent);
 
         LogHelper.Logger.Information("Publish event: {id}", runEvent.Id);
@@ -146,7 +164,7 @@ internal class Debouncer<TData> : IDisposable
         var runEvent = PublishEvent(data);
 
         while (!runEvent.IsFinished)
-            Thread.Sleep(50);        
+            Thread.Sleep(50);
 
         LogHelper.Logger.Information($"Event {runEvent.Id} finished");
     }

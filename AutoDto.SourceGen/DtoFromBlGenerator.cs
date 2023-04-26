@@ -6,6 +6,7 @@ using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading;
 using AutoDto.Setup;
+using AutoDto.SourceGen.Configuration;
 using AutoDto.SourceGen.Debounce;
 using AutoDto.SourceGen.DiagnosticMessages;
 using AutoDto.SourceGen.DiagnosticMessages.Errors;
@@ -20,7 +21,9 @@ using AutoDto.SourceGen.TypeParser;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
+using Serilog.Events;
 
 namespace AutoDto.SourceGen;
 
@@ -29,7 +32,6 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 {
     private ITypeParser _parser;
     private IMetadataUpdaterHelper _updaterHelper;
-    private Debouncer<ExcecutorData> _debouncer;
 
     private class ClassData
     {
@@ -43,9 +45,9 @@ public class DtoFromBlGenerator : IIncrementalGenerator
         public TypeDeclarationSyntax TypeDeclaration { get; }
     }
 
-    private class ExcecutorData
+    private class ExecutorData
     {
-        public ExcecutorData(SourceProductionContext context, List<ClassData> classes)
+        public ExecutorData(SourceProductionContext context, List<ClassData> classes)
         {
             Context = context;
             Classes = classes;
@@ -57,9 +59,13 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 
     private static int id = 0;
     private int currId = 0;
-    public DtoFromBlGenerator()
+
+    public DtoFromBlGenerator() : this(false)
+    { }
+
+    public DtoFromBlGenerator(bool allowMultiInstance)
     {
-         currId = Interlocked.Increment(ref id);
+        currId = Interlocked.Increment(ref id);
 
         _updaterHelper = new MetadataUpdaterHelper(
             new AttributeUpdaterFactory(),
@@ -73,50 +79,55 @@ public class DtoFromBlGenerator : IIncrementalGenerator
             new AttributeDataReader(new AttributeDataFactory()),
             _updaterHelper
             );
+
+        _allowMultiInstance = allowMultiInstance;
     }
 
-    public double DebonceTimeInMilisecocnds { get; set; } = 500;
-    public bool AllowMultiInstance { get; set; } = false;
-
-    private static object _lock = new object();    
+    private bool _allowMultiInstance;
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        if (!AllowMultiInstance && currId != 1)
+        if (!_allowMultiInstance && currId != 1)
             return;
-
-        var path = Path.Combine(Environment.CurrentDirectory, "Logs");
-        Directory.CreateDirectory(path);
-
-        if (LogHelper.Logger is null)
-            LogHelper.InitFileLogger(path);
-
-        if (_debouncer != null)
-            return;
-
-        lock (_lock)
-        {
-            if (_debouncer != null)
-                return;
-
-            _debouncer = new Debouncer<ExcecutorData>(ApplyGenerator, TimeSpan.FromMilliseconds(DebonceTimeInMilisecocnds));
-        }
 
         context.RegisterSourceOutput(
-                CreateSyntaxProvider(context),
-                (ctx, classes) => 
+                CreateSyntaxProvider(context).Combine(context.AnalyzerConfigOptionsProvider),
+                (ctx, data) => 
                 {
                     try
                     {
-                        _debouncer.RunAction(new ExcecutorData(ctx, classes.ToList()));
+                        Execute(ctx, data.Left, data.Right);
                     }
                     catch (Exception e)
                     {
-                        LogHelper.Logger.Fatal(e, "Fatar error");
+                        LogHelper.Logger?.Error(e, "Unhandled error");
                     }
                 });
+    }
 
-        LogHelper.Logger.Debug("Generator inited");
+    private void Execute(SourceProductionContext ctx, ImmutableArray<ClassData> classes, AnalyzerConfigOptionsProvider analyzer)
+    {
+        InitOptions(classes, analyzer);
+
+        DebouncerFactory<ExecutorData>
+            .GetForAction(ApplyGenerator, GlobalConfig.Instance.DebouncerConfig)
+            .RunAction(new ExecutorData(ctx, classes.ToList()));
+    }
+
+    private void InitOptions(ImmutableArray<ClassData> classes, AnalyzerConfigOptionsProvider analyzer)
+    {
+        if (GlobalConfig.GlobalOptions == null)
+            GlobalConfig.GlobalOptions = analyzer.GlobalOptions;
+
+        if (classes == null || classes.Length == 0)
+            return;
+
+        if (!GlobalConfig.Instance.IsInited)
+        {
+            var editorValues = analyzer.GetOptions(classes[0].TypeDeclaration.SyntaxTree);
+
+            GlobalConfig.Instance.Init(editorValues);
+        }
     }
 
     private IncrementalValueProvider<ImmutableArray<ClassData>> CreateSyntaxProvider(IncrementalGeneratorInitializationContext context)
@@ -125,7 +136,7 @@ public class DtoFromBlGenerator : IIncrementalGenerator
             .CreateSyntaxProvider(
                 (node, _) =>
                 {
-                    LogHelper.Logger.Verbose("Check node: {node}", node.GetType().Name);
+                    LogHelper.Log(LogEventLevel.Verbose, "Check node '{node}' in {location}", node.GetType().Name, node.GetLocation().ToString());
                     if (node is not TypeDeclarationSyntax td)
                         return false;
 
@@ -133,14 +144,14 @@ public class DtoFromBlGenerator : IIncrementalGenerator
                 },
                 (sc, _) =>
                 {
-                    LogHelper.Logger.Verbose("Collect: {node}", sc.ToTypeSymbol().Name);
+                    LogHelper.Log(LogEventLevel.Verbose, "Collect: {node}", sc.ToTypeSymbol().Name);
                     return new ClassData(sc.ToTypeSymbol(), (TypeDeclarationSyntax)sc.Node);
                 })
             .Where(x => _parser.CanParse(x.TypeDeclaration))
             .Collect();
     }
 
-    private void ApplyGenerator(ExcecutorData data)
+    private void ApplyGenerator(ExecutorData data)
     {
         if (data == null)
         {

@@ -3,11 +3,16 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.33516.290
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoDto.Example", "AutoDto.Example\AutoDto.Example.csproj", "{97E722BB-00FF-472F-9A1E-FEC3CFDCC1D8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AutoDto.Example", "AutoDto.Example\AutoDto.Example.csproj", "{97E722BB-00FF-472F-9A1E-FEC3CFDCC1D8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoDto.Example.BlModule", "AutoDto.Example.BlModule\AutoDto.Example.BlModule.csproj", "{2E0FBE70-12BD-46C4-81AE-966004C573B5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AutoDto.Example.BlModule", "AutoDto.Example.BlModule\AutoDto.Example.BlModule.csproj", "{2E0FBE70-12BD-46C4-81AE-966004C573B5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoDto.Example.DtoModule", "AutoDto.Example.DtoModule\AutoDto.Example.DtoModule.csproj", "{1F9C6B3B-6C3D-428D-B5D5-740DEFE9FDA0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AutoDto.Example.DtoModule", "AutoDto.Example.DtoModule\AutoDto.Example.DtoModule.csproj", "{1F9C6B3B-6C3D-428D-B5D5-740DEFE9FDA0}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{C046445F-E132-414A-BAC3-C30CC7DE0834}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
