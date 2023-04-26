@@ -47,7 +47,9 @@ public class BlWithMembers : BaseBl
 
     public string FieldPublic;
     protected string FieldProtected;
+#pragma warning disable CS0169 // The field 'BlWithMembers.FieldPrivate' is never used
     private string FieldPrivate;
+#pragma warning restore CS0169 // The field 'BlWithMembers.FieldPrivate' is never used
 }
 
 public class BlInheritedFromBlWithMembers : BlWithMembers

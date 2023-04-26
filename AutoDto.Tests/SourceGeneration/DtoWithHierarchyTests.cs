@@ -15,8 +15,6 @@ public class DtoWithHierarchyTests : BaseUnitTest
     string _dtoName = "MyDto";
     Action<ImmutableArray<Diagnostic>> _noDiagnosticMsgs = (msgs) => Assert.Empty(msgs);
 
-    
-
     private string GetDtoCode(Type blType, Type baseDtoType)
     {
         var attr = DtoCreator.GetDtoFromAttr(blType);
@@ -155,7 +153,6 @@ namespace AutoDto.Tests.SourceGeneration.Dto;
         }
 
         DoTest_Error(typeof(BaseDtoWithConflictMethodName), TestDiagnostic);
-
     }
 
     [Fact]
@@ -258,6 +255,5 @@ namespace AutoDto.Tests.SourceGeneration.Dto;
         }
 
         DoTest_Success(typeof(BaseDtoGeneric<DateTime>), expected, TestDiagnostic);
-
     }
 }
