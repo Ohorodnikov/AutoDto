@@ -63,7 +63,7 @@ public class DtoMainAttributeTests : BaseCompilerMessageTests
 
         var (compilation, msgs) = Generator.RunWithMsgs(code);
 
-        Assert.Equal(1, msgs.Length);
+        Assert.Single(msgs);
 
         var expected = new MainDtoNotFoundError(relDefMain.Type.FullName, 2);
 
@@ -83,7 +83,7 @@ public class DtoMainAttributeTests : BaseCompilerMessageTests
 
         var (compilation, msgs) = Generator.RunWithMsgs(code);
 
-        Assert.Equal(1, msgs.Length);
+        Assert.Single(msgs);
 
         var expected = new MoreThanOneMainDtoFoundError(relDefMain.Type.FullName, 2);
 

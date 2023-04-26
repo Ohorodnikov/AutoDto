@@ -83,7 +83,7 @@ namespace AutoDto.Tests.SourceGeneration.Dto;
             testDiagnosticMsgsAction
             );
 
-        Assert.Equal(1, compilation.SyntaxTrees.Count());
+        Assert.Single(compilation.SyntaxTrees);
     }
 
     [Fact]
@@ -217,7 +217,7 @@ namespace AutoDto.Tests.SourceGeneration.Dto;
             var wrnIdMember = new MemberConflictWarning("", _dtoName).Id;
             var wrnIdProp = new PropertyConflictWarning("", _dtoName).Id;
 
-            Assert.Equal(1, msgs.Where(x => x.Id == wrnIdProp).Count());
+            Assert.Single(msgs.Where(x => x.Id == wrnIdProp).ToList());
             Assert.Equal(3, msgs.Where(x => x.Id == wrnIdMember).Count());
         }
 
@@ -249,7 +249,7 @@ namespace AutoDto.Tests.SourceGeneration.Dto;
 
         void TestDiagnostic(ImmutableArray<Diagnostic> msgs)
         {
-            Assert.Equal(1, msgs.Length);
+            Assert.Single(msgs);
             var expId = new PropertyConflictWarning("", _dtoName).Id;
 
             Assert.Equal(DiagnosticSeverity.Warning, msgs[0].Severity);
