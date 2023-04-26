@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <Authors>Vladyslav Ohorodnikov</Authors>
-    <VersionPrefix>2.0.0-beta-3</VersionPrefix>
+    <VersionPrefix>2.0.0</VersionPrefix>
     <Description>Auto copy properties from bl mode to dto</Description>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/Ohorodnikov/AutoDto</RepositoryUrl>
