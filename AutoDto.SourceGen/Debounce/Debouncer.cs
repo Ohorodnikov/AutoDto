@@ -10,34 +10,24 @@ namespace AutoDto.SourceGen.Debounce;
 
 internal interface IDebouncer<TData> where TData : class
 {
-    void RunAction(TData data);
+    IDebounceEvent RunAction(TData data);
 }
 
-internal class DebouncerFake<TData> : IDebouncer<TData> where TData : class
+internal class Debouncer<TData> : IDebouncer<TData> where TData : class
 {
-    private readonly Action<TData> _action;
+    private const int MINIMAL_TIME_TO_RUN_DEBOUNCED = 250;
 
-    public DebouncerFake(Action<TData> action)
-    {
-        _action = action;
-    }
-    public void RunAction(TData data)
-    {
-        _action(data);
-    }
-}
-
-internal class Debouncer<TData> : IDisposable, IDebouncer<TData> where TData : class
-{
     private readonly Action<TData> _action;
+    private readonly bool _alwaysImmediately;
     private readonly IDebounceRebalancer _rebalancer;
-    private Timer _timer;
-    private object _lock = new object();
+    private int _time2CollectEvents = 0;
 
-    public Debouncer(Action<TData> action, TimeSpan period, bool enableBalancer = true)
+    public Debouncer(Action<TData> action, TimeSpan period, bool alwaysImmediately, bool enableBalancer = true)
     {
         _action = action;
-        _runEvents = new ConcurrentStack<RunEvent>();
+        _alwaysImmediately = alwaysImmediately;
+        _runEvents = new ConcurrentStack<IDebounceEvent>();
+        SetPeriod(period.TotalMilliseconds);
 
         var rebalancerOpts = new DebounceRebalancer.Options
         {
@@ -46,131 +36,117 @@ internal class Debouncer<TData> : IDisposable, IDebouncer<TData> where TData : c
             TimerPeriodMultiplicator = 2
         };
 
-        if (enableBalancer)
-            _rebalancer = new DebounceRebalancer(InitTimer, rebalancerOpts);
-        else
-            _rebalancer = new DisabledDebounceRebalancer();
-
-        InitTimer(period.TotalMilliseconds);
+        _rebalancer = enableBalancer 
+                    ? new DebounceRebalancer(SetPeriod, rebalancerOpts) 
+                    : new DisabledDebounceRebalancer();
     }
 
-    private bool IsTimerAlive() => _timer is not null;
-
-    private void InitTimer(double periodInMs)
+    private void SetPeriod(double period)
     {
-        LogHelper.Logger.Warning("Change period on {period} ms", periodInMs);
+        _time2CollectEvents = (int)period;
+    }
 
-        if (periodInMs < 250)
+    private ConcurrentStack<IDebounceEvent> _runEvents;
+    private void PublishEvent(IDebounceEvent debounceEvent)
+    {
+        _runEvents.Push(debounceEvent);
+
+        LogHelper.Logger.Information("Publish event: {id}", debounceEvent.Id);
+    }
+
+    public IDebounceEvent RunAction(TData data)
+    {
+        var ev = new DebounceEvent<TData>(data);
+        if (IsRunImmediately())
         {
-            KillCurrentTimer();
-            return;
+            LogHelper.Logger.Debug("Run immediately");
+            ExecuteSafe(ev);
+            ev.Finish();
         }
-
-        if (IsTimerAlive())
-            _timer.Change(TimeSpan.Zero, TimeSpan.FromMilliseconds(periodInMs));
         else
-            _timer = CreateNewTimer(periodInMs);
+        {
+            PublishEvent(ev);
+            Execute();
+        }
+       
+        return ev;
     }
 
-    private Timer CreateNewTimer(double periodInMs)
+    private bool IsRunImmediately()
     {
-        LogHelper.Logger.Information("Create timer for {periodInMs} ms", periodInMs);
-        return new Timer((q) => Execute(), null, TimeSpan.Zero, TimeSpan.FromMilliseconds(periodInMs));
+        return _alwaysImmediately || _time2CollectEvents < MINIMAL_TIME_TO_RUN_DEBOUNCED;
     }
 
-    private void KillCurrentTimer()
-    {
-        LogHelper.Logger.Information("Kill timer and start sync mode");
-        _timer?.Dispose();
-        _timer = null;
-    }
-
+    private bool _isCollectingEvents = false;
+    private readonly object _createTaskLock = new object();
     private void Execute()
     {
-        if (_runEvents.Count == 0)
+        if (_isCollectingEvents)
             return;
 
-        lock (_lock)
+        lock (_createTaskLock)
         {
-            if (_runEvents.Count == 0)
+            if (_isCollectingEvents)
                 return;
 
-            if (!_runEvents.TryPeek(out var runEvent))
-                return;
+            _isCollectingEvents = true;
+
+            Task.Factory.StartNew(() =>
+            {
+                var events = CollectEvents();
+                _isCollectingEvents = false;
+
+                if (events.Count == 0)
+                    return;
+
+                ExecuteSafe(events.Peek());
+
+                FinishCollectedEvents(events);
+            });
+        }
+    }
+
+    private void DebounceWait()
+    {
+        Thread.Sleep(_time2CollectEvents);
+    }
+
+    private Queue<IDebounceEvent> CollectEvents()
+    {
+        DebounceWait();
+
+        var currQueue = new Queue<IDebounceEvent>();
+
+        while (_runEvents.TryPop(out var v))
+            currQueue.Enqueue(v);
+
+        LogHelper.Logger.Debug("Collected {count} events", currQueue.Count);
+
+        return currQueue;
+    }
+
+    private void ExecuteSafe(IDebounceEvent runEvent)
+    {
+        try
+        {
+            LogHelper.Logger.Debug("Run event: {id}", runEvent.Id);
 
             var sw = new Stopwatch();
-            try
-            {
-                LogHelper.Logger.Debug("Run event: {id}", runEvent.Id);
-
-                sw.Start();
-                _action(runEvent.Data);
-            }
-            catch (Exception e)
-            {
-                LogHelper.Logger.Error(e, "error happened");
-            }
-            finally
-            {
-                sw.Stop();
-            }
-
-            while (_runEvents.TryPop(out var v))
-                v.Finish();
+            sw.Start();
+            _action((TData)runEvent.GetData());
+            sw.Stop();
 
             _rebalancer.AddExecutionStatistic(sw.Elapsed);
         }
-    }
-
-    private class RunEvent
-    {
-        public RunEvent(TData data)
+        catch (Exception e)
         {
-            Data = data;
-            Id = Guid.NewGuid();
-            IsFinished = false;
-        }
-        public TData Data { get; }
-        public Guid Id { get; }
-        public bool IsFinished { get; private set; }
-
-        public void Finish()
-        {
-            IsFinished = true;
+            LogHelper.Logger.Error(e, "error happened");
         }
     }
 
-    private ConcurrentStack<RunEvent> _runEvents;
-    private RunEvent PublishEvent(TData data)
+    private void FinishCollectedEvents(Queue<IDebounceEvent> events)
     {
-        var runEvent = new RunEvent(data);
-
-        _runEvents.Push(runEvent);
-
-        LogHelper.Logger.Information("Publish event: {id}", runEvent.Id);
-
-        return runEvent;
-    }
-
-    public void RunAction(TData data)
-    {
-        if (!IsTimerAlive())
-        {
-            LogHelper.Logger.Information($"Execute without debounce");
-            _action(data);
-            return;
-        }
-
-        var runEvent = PublishEvent(data);
-
-        while (!runEvent.IsFinished)
-            Thread.Sleep(50);
-
-        LogHelper.Logger.Information($"Event {runEvent.Id} finished");
-    }
-
-    public void Dispose()
-    {
-        _timer?.Dispose();
+        while (events.Count > 0)
+            events.Dequeue().Finish();
     }
 }

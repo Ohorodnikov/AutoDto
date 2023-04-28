@@ -30,11 +30,11 @@ public class DebouncerTest : BaseUnitTest
         }
 
         var d = new DebouncerData();
-        var debouncer = new Debouncer<DebouncerData>(ExecuteAction, TimeSpan.FromMilliseconds(ms), false);
+        var debouncer = new Debouncer<DebouncerData>(ExecuteAction, TimeSpan.FromMilliseconds(ms), false, false);
 
         Parallel.For(0, 3, _ => 
         {
-            debouncer.RunAction(d);
+            debouncer.RunAction(d).Wait();
         });
 
         Assert.Equal(3, i);
@@ -51,11 +51,11 @@ public class DebouncerTest : BaseUnitTest
         }
 
         var d = new DebouncerData();
-        var debouncer = new Debouncer<DebouncerData>(ExecuteAction, TimeSpan.FromMilliseconds(300), false);
+        var debouncer = new Debouncer<DebouncerData>(ExecuteAction, TimeSpan.FromMilliseconds(300), false, false);
 
         Parallel.For(0, 3, _ =>
         {
-            debouncer.RunAction(d);
+            debouncer.RunAction(d).Wait();
         });
 
         Assert.Equal(1, i);

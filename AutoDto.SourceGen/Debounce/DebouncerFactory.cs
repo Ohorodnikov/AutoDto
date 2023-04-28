@@ -19,9 +19,6 @@ internal static class DebouncerFactory<TData>
         if (config == null)
             throw new ArgumentNullException("config");
 
-        if (!config.UseDebouncer)
-            return new DebouncerFake<TData>(action);
-
-        return new Debouncer<TData>(action, TimeSpan.FromMilliseconds(config.IntervalMs), config.AllowAutoRebalance);
+        return new Debouncer<TData>(action, TimeSpan.FromMilliseconds(config.IntervalMs), config.UseDebouncer, config.AllowAutoRebalance);
     }
 }

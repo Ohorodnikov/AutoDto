@@ -113,7 +113,9 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 
         DebouncerFactory<ExecutorData>
             .GetForAction(ApplyGenerator, GlobalConfig.Instance.DebouncerConfig)
-            .RunAction(new ExecutorData(ctx, classes.ToList()));
+            .RunAction(new ExecutorData(ctx, classes.ToList()))
+            .Wait()
+            ;
     }
 
     private void InitOptions(ImmutableArray<ClassData> classes, AnalyzerConfigOptionsProvider analyzer)
