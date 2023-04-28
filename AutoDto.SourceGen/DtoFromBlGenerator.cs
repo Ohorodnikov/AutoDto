@@ -35,14 +35,16 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 
     private class ClassData
     {
-        public ClassData(INamedTypeSymbol typeSymbol, TypeDeclarationSyntax typeDeclaration)
+        public ClassData(INamedTypeSymbol typeSymbol, TypeDeclarationSyntax typeDeclaration, bool isSourceValid)
         {
             TypeSymbol = typeSymbol;
             TypeDeclaration = typeDeclaration;
+            IsSourceValid = isSourceValid;
         }
 
         public INamedTypeSymbol TypeSymbol { get; }
         public TypeDeclarationSyntax TypeDeclaration { get; }
+        public bool IsSourceValid { get; }
     }
 
     private class ExecutorData
@@ -60,10 +62,10 @@ public class DtoFromBlGenerator : IIncrementalGenerator
     private static int id = 0;
     private int currId = 0;
 
-    public DtoFromBlGenerator() : this(false)
+    public DtoFromBlGenerator() : this(false, () => { })
     { }
 
-    public DtoFromBlGenerator(bool allowMultiInstance)
+    public DtoFromBlGenerator(bool allowMultiInstance, Action onExecute)
     {
         currId = Interlocked.Increment(ref id);
 
@@ -81,9 +83,11 @@ public class DtoFromBlGenerator : IIncrementalGenerator
             );
 
         _allowMultiInstance = allowMultiInstance;
+        _onExecute = onExecute;
     }
 
     private bool _allowMultiInstance;
+    private readonly Action _onExecute;
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -109,6 +113,12 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 
     private void Execute(SourceProductionContext ctx, ImmutableArray<ClassData> classes, AnalyzerConfigOptionsProvider analyzer)
     {
+        if (!classes.Any(x => x.IsSourceValid))
+        {
+            LogHelper.Log(LogEventLevel.Warning, "Do not run generation as one from dtos is comiled with errors");
+            return;
+        }
+
         InitOptions(classes, analyzer);
 
         DebouncerFactory<ExecutorData>
@@ -147,10 +157,15 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 
                     return true;
                 },
-                (sc, _) =>
+                (sc, ct) =>
                 {
+                    var diag = sc.SemanticModel
+                            .GetDiagnostics(cancellationToken: ct);
+                    var isSourceWithErrors = diag
+                            .Any(x => x.Severity == DiagnosticSeverity.Error);
+
                     LogHelper.Log(LogEventLevel.Verbose, "Collect: {node}", sc.ToTypeSymbol().Name);
-                    return new ClassData(sc.ToTypeSymbol(), (TypeDeclarationSyntax)sc.Node);
+                    return new ClassData(sc.ToTypeSymbol(), (TypeDeclarationSyntax)sc.Node, !isSourceWithErrors);
                 })
             .Where(x => _parser.CanParse(x.TypeDeclaration))
             .Collect();
@@ -158,6 +173,7 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 
     private void ApplyGenerator(ExecutorData data)
     {
+        _onExecute();
         LogHelper.Logger.Verbose("#### Start generator executing ####");
 
         if (data == null)

@@ -14,15 +14,16 @@ namespace AutoDto.Tests.TestHelpers;
 
 public class GeneratorRunner
 {
+    public Action OnApplyGenerator { get; set; }
+    public bool CheckInputCompilation { get; set; } = true;
     public Compilation Run(string code, IEnumerable<MetadataReference> extraRefs = null)
     {
         return RunWithMsgs(code, extraRefs).compilation;
     }
 
-    public (Compilation compilation, ImmutableArray<Diagnostic> compileMsgs) RunWithMsgs(string code, IEnumerable<MetadataReference> extraRefs = null)
+    public (Compilation compilation, ImmutableArray<Diagnostic> compileMsgs) RunWithMsgs(IEnumerable<string> codes, IEnumerable<MetadataReference> extraRefs = null)
     {
         extraRefs ??= new List<MetadataReference>();
-        var syntaxTree = CSharpSyntaxTree.ParseText(code);
         var systemAssemblyRefs = GetSystemRefs();
         var commonRefs = GetCommonRefs();
 
@@ -30,19 +31,24 @@ public class GeneratorRunner
 
         var compilation = CSharpCompilation.Create(
             "MyCompilation",
-            syntaxTrees: new[] { syntaxTree },
+            syntaxTrees: codes.Select(code => CSharpSyntaxTree.ParseText(code)).ToList(),
             references: allRefs,
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        Compile(compilation); //to see compile errs if any in code
+        if (CheckInputCompilation)
+            Compile(compilation); //to see compile errs if any in code
 
-        var driver = CSharpGeneratorDriver.Create(new[] { new DtoFromBlGenerator(true) });
+        var driver = CSharpGeneratorDriver.Create(new[] { new DtoFromBlGenerator(true, OnApplyGenerator) });
 
         driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
 
         return (outputCompilation, diagnostics);
     }
 
+    public (Compilation compilation, ImmutableArray<Diagnostic> compileMsgs) RunWithMsgs(string code, IEnumerable<MetadataReference> extraRefs = null)
+    {
+        return RunWithMsgs(new[] {code}, extraRefs);
+    }
 
     public IEnumerable<MetadataReference> GetSystemRefs()
     {

@@ -29,6 +29,15 @@ public abstract class BaseUnitTest
     protected DtoCodeCreator DtoCreator { get; }
     protected GeneratorRunner Generator { get; }
 
+    protected GeneratorRunner GetGeneratorConfigured(bool checkInputCompilation, Action onRun)
+    {
+        return new GeneratorRunner
+        {
+            CheckInputCompilation = checkInputCompilation,
+            OnApplyGenerator = onRun
+        };
+    }
+
     protected Compilation RunForDtos(params DtoData[] dtos)
     {
         var code = DtoCreator.GetDtosDefinition(dtos);

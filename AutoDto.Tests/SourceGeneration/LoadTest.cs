@@ -46,7 +46,7 @@ public class LoadTests : BaseUnitTest
 
         Generator.Compile(compilation); //to see compile errs if any in code
 
-        var driver = CSharpGeneratorDriver.Create(new[] { new DtoFromBlGenerator(true) });
+        var driver = CSharpGeneratorDriver.Create(new[] { new DtoFromBlGenerator(true, () => { }) });
 
         var sw = new Stopwatch();
         sw.Start();
