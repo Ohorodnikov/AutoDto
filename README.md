@@ -97,7 +97,7 @@ Default values:
 - auto_dto.debounce.interval = 500
 - auto_dto.debounce.auto_rebalance_enabled = true
 
-> :warning: If average executing generator time will be less than **250 milliseconds** - debouncer will be turned off and switched to every request generating.
+> :warning: Debouncer can be turned off and switched to every request generating.
 
 ### Logging
 Logger is disabled by default. If any issues with generator - enable logger, set folder path for logs and set logging level.
