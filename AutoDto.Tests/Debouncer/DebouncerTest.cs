@@ -18,7 +18,7 @@ public class DebouncerTest : BaseUnitTest
 
     [Theory]
     [InlineData(0)]
-    [InlineData(200)]
+    [InlineData(50)]
     public void TestDebouncerWithZeroPeriod(int ms)
     {
         int i = 0;

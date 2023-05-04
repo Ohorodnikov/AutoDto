@@ -49,6 +49,9 @@ public class AvgCalculator
 
     public double GetLastNAvgValue()
     {
+        if (_lastNQueue.Count == 0)
+            return 0.0;
+
         return _lastNQueue.Average();
     }
 
