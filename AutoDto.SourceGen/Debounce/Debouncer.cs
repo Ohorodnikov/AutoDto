@@ -15,7 +15,9 @@ internal interface IDebouncer<TData> where TData : class
 
 internal class Debouncer<TData> : IDebouncer<TData> where TData : class
 {
-    private const int MINIMAL_TIME_TO_RUN_DEBOUNCED = 250;
+    private const int MINIMAL_TIME_TO_RUN_DEBOUNCED = 100;
+
+    private readonly AvgCalculator _eventsCountAvg;
 
     private readonly Action<TData> _action;
     private readonly bool _alwaysImmediately;
@@ -27,6 +29,7 @@ internal class Debouncer<TData> : IDebouncer<TData> where TData : class
         _action = action;
         _alwaysImmediately = alwaysImmediately;
         _runEvents = new ConcurrentStack<IDebounceEvent>();
+        _eventsCountAvg = new AvgCalculator(50, "events");
         SetPeriod(period.TotalMilliseconds);
 
         var rebalancerOpts = new DebounceRebalancer.Options
@@ -43,6 +46,7 @@ internal class Debouncer<TData> : IDebouncer<TData> where TData : class
 
     private void SetPeriod(double period)
     {
+        LogHelper.Logger.Warning("Set debouncer period to {period}", period);
         _time2CollectEvents = (int)period;
     }
 
@@ -74,7 +78,10 @@ internal class Debouncer<TData> : IDebouncer<TData> where TData : class
 
     private bool IsRunImmediately()
     {
-        return _alwaysImmediately || _time2CollectEvents < MINIMAL_TIME_TO_RUN_DEBOUNCED;
+        if (_alwaysImmediately)
+            return true;
+
+        return _time2CollectEvents < MINIMAL_TIME_TO_RUN_DEBOUNCED && _eventsCountAvg.GetLastNAvgValue() < 1.5;
     }
 
     private bool _isCollectingEvents = false;
@@ -99,6 +106,7 @@ internal class Debouncer<TData> : IDebouncer<TData> where TData : class
                 if (events.Count == 0)
                     return;
 
+                _eventsCountAvg.Push(events.Count);
                 ExecuteSafe(events.Peek());
 
                 FinishCollectedEvents(events);

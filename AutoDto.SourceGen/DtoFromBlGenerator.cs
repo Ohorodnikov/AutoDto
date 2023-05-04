@@ -109,6 +109,9 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 
     private void Execute(SourceProductionContext ctx, ImmutableArray<ClassData> classes, AnalyzerConfigOptionsProvider analyzer)
     {
+        if (classes == null || classes.Length == 0)
+            return;
+
         InitOptions(classes, analyzer);
 
         DebouncerFactory<ExecutorData>
@@ -122,9 +125,6 @@ public class DtoFromBlGenerator : IIncrementalGenerator
     {
         if (GlobalConfig.GlobalOptions == null)
             GlobalConfig.GlobalOptions = analyzer.GlobalOptions;
-
-        if (classes == null || classes.Length == 0)
-            return;
 
         if (GlobalConfig.Instance.IsInited)
         {
