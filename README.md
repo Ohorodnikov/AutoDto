@@ -74,5 +74,45 @@ To avoid some properties from BlType, use `[DtoIgnore]` attribute:
 public partial SomeDto {}
 ```
 
+## Options
+
+Options can be set only in `.editorconfig`.
+
+> :exclamation: All options are applied once, after first generator running (mostly after open project).
+
+### Generator running
+
+Generator is based on `IIncrementalGenerator`. Generator is running on every class declaration change event (on every change that affects class structure).
+To avoid performance issues, it is used debouncer for collecting all events to regenerate classes. By default debounce time is 500 ms. After some time debouncer will collect execution statistic and rebalance timer.
+
+Any user can turn off debouncer, set initial time ets by setting options in `.editorconfig`.
+
+Supported options:
+- auto_dto.debounce.enabled - true/false - use debounce or always run generation for every event
+- auto_dto.debounce.interval - int - in milliseconds - set initial debounce interval
+- auto_dto.debounce.auto_rebalance_enabled - true/false - allow auto timer change or not.
+
+Default values:
+- auto_dto.debounce.enabled = true
+- auto_dto.debounce.interval = 500
+- auto_dto.debounce.auto_rebalance_enabled = true
+
+> :warning: Debouncer can be turned off and switched to every request generating.
+
+### Logging
+Logger is disabled by default. If any issues with generator - enable logger, set folder path for logs and set logging level.
+
+Supported options:
+- auto_dto.logger.folder_path - string - path to folder where logs will be generated
+- auto_dto.logger.enabled - true/false
+- auto_dto.logger.log_level - Serilog log levels. See [LogEventLevel](https://github.com/serilog/serilog/blob/main/src/Serilog/Events/LogEventLevel.cs)
+
+Default values:
+- auto_dto.logger.folder_path = Try get value from `build_property.projectdir`. If cannot - `Path.Combine(Environment.CurrentDirectory, "Logs")` is using
+- auto_dto.logger.enabled = false
+- auto_dto.logger.log_level = Warning
+
+
+
 
 

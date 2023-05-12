@@ -113,6 +113,9 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 
     private void Execute(SourceProductionContext ctx, ImmutableArray<ClassData> classes, AnalyzerConfigOptionsProvider analyzer)
     {
+        if (classes == null || classes.Length == 0)
+            return;
+
         if (!classes.Any(x => x.IsSourceValid))
         {
             LogHelper.Log(LogEventLevel.Warning, "Do not run generation as one from dtos is comiled with errors");
@@ -123,16 +126,15 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 
         DebouncerFactory<ExecutorData>
             .GetForAction(ApplyGenerator, GlobalConfig.Instance.DebouncerConfig)
-            .RunAction(new ExecutorData(ctx, classes.ToList()));
+            .RunAction(new ExecutorData(ctx, classes.ToList()))
+            .Wait()
+            ;
     }
 
     private void InitOptions(ImmutableArray<ClassData> classes, AnalyzerConfigOptionsProvider analyzer)
     {
         if (GlobalConfig.GlobalOptions == null)
             GlobalConfig.GlobalOptions = analyzer.GlobalOptions;
-
-        if (classes == null || classes.Length == 0)
-            return;
 
         if (GlobalConfig.Instance.IsInited)
         {
