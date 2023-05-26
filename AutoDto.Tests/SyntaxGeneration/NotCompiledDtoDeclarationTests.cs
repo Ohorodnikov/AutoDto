@@ -4,25 +4,8 @@ using AutoDto.Tests.TestHelpers;
 
 namespace AutoDto.Tests.SyntaxGeneration;
 
-public class NotCompiledDtoDeclarationTests : BaseUnitTest
+public class NotCompiledDtoDeclarationTests : BaseCompilationErrorTests
 {
-    private void AssertGeneratorWasNotRun(params string[] dtoCodes)
-    {
-        int i = 0;
-        void CalculateExecCount()
-        {
-            Interlocked.Increment(ref i);
-        }
-
-        var gen = GetGeneratorConfigured(false, CalculateExecCount);
-
-        var (compilations, msgs) = gen.RunWithMsgs(dtoCodes);
-
-        Assert.Equal(0, i);
-
-        Assert.Equal(dtoCodes.Length, compilations.SyntaxTrees.Count());
-    }
-
     [Fact]
     public void BrokenAttributeDefinitionTest()
     {
@@ -86,6 +69,28 @@ public class MyDto
     }
 
     [Fact]
+    public void BrokenOwnProperty2()
+    {
+        var type = typeof(SimpleType);
+        var attr = typeof(DtoFromAttribute);
+
+        var code = $@"
+using {type.Namespace};
+using {attr.Namespace};
+
+namespace {DtoCodeCreator.DtoTypNamespace};
+
+[DtoFrom(typeof({nameof(SimpleType)}))]
+public class MyDto
+{{ 
+    public string MyOwnProperty {{ get; se }}
+}}
+";
+
+        AssertGeneratorWasNotRun(code);
+    }
+
+    [Fact]
     public void BrokenMethodDefinitionTest()
     {
         var type = typeof(SimpleType);
@@ -103,6 +108,29 @@ public class MyDto
     public void MyMethod(bool param1, )
     {{
     }}
+}}
+";
+
+        AssertGeneratorWasNotRun(code);
+    }
+
+    [Fact]
+    public void PragmaErrorTest()
+    {
+        var type = typeof(SimpleType);
+        var attr = typeof(DtoFromAttribute);
+
+        var code = $@"
+using {type.Namespace};
+using {attr.Namespace};
+
+namespace {DtoCodeCreator.DtoTypNamespace};
+
+[DtoFrom(typeof({nameof(SimpleType)}))]
+public class MyDto
+{{ 
+    public int Id {{ get; set; }}
+#error MyTestError
 }}
 ";
 
@@ -131,7 +159,7 @@ public class MyDto
 }}
 ";
 
-        AssertGeneratorWasNotRun(code);
+        AssertGeneratorWasRunNTimes(1, code);
     }
 
     [Fact]
@@ -179,7 +207,7 @@ namespace {DtoCodeCreator.DtoTypNamespace};
 
 public class BaseDto
 {{
-    public strings BaseDtoProp {{ get; set; }}
+    public str BaseDtoProp {{ get; set; }}
 }}
 ";
 

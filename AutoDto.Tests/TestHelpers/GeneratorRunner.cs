@@ -14,7 +14,7 @@ namespace AutoDto.Tests.TestHelpers;
 
 public class GeneratorRunner
 {
-    public Action OnApplyGenerator { get; set; }
+    public Action OnApplyGenerator { get; set; } = () => { };
     public bool CheckInputCompilation { get; set; } = true;
     public Compilation Run(string code, IEnumerable<MetadataReference> extraRefs = null)
     {
@@ -31,7 +31,7 @@ public class GeneratorRunner
 
         var compilation = CSharpCompilation.Create(
             "MyCompilation",
-            syntaxTrees: codes.Select(code => CSharpSyntaxTree.ParseText(code)).ToList(),
+            syntaxTrees: codes.Select(code => CSharpSyntaxTree.ParseText(code, path: Guid.NewGuid().ToString() + ".cs")).ToList(),
             references: allRefs,
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 

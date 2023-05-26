@@ -17,12 +17,14 @@ using AutoDto.SourceGen.Metadatas;
 using AutoDto.SourceGen.MetadataUpdaters;
 using AutoDto.SourceGen.MetadataUpdaters.AllMetadatasUpdaters;
 using AutoDto.SourceGen.MetadataUpdaters.OneMetadataUpdaters;
+using AutoDto.SourceGen.SourceValidation;
 using AutoDto.SourceGen.TypeParser;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
+using Serilog;
 using Serilog.Events;
 
 namespace AutoDto.SourceGen;
@@ -32,19 +34,21 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 {
     private ITypeParser _parser;
     private IMetadataUpdaterHelper _updaterHelper;
+    private IAttributeDataReader _attributeDataReader;
+    private ISourceValidator _sourceValidator;
 
     private class ClassData
     {
-        public ClassData(INamedTypeSymbol typeSymbol, TypeDeclarationSyntax typeDeclaration, bool isSourceValid)
+        public ClassData(INamedTypeSymbol typeSymbol, TypeDeclarationSyntax typeDeclaration, Compilation compilation)
         {
             TypeSymbol = typeSymbol;
             TypeDeclaration = typeDeclaration;
-            IsSourceValid = isSourceValid;
+            Compilation = compilation;
         }
 
         public INamedTypeSymbol TypeSymbol { get; }
         public TypeDeclarationSyntax TypeDeclaration { get; }
-        public bool IsSourceValid { get; }
+        public Compilation Compilation { get; }
     }
 
     private class ExecutorData
@@ -77,8 +81,12 @@ public class DtoFromBlGenerator : IIncrementalGenerator
                 new ConflictNamesChecker()
             });
 
+        _attributeDataReader = new AttributeDataReader(new AttributeDataFactory());
+
+        _sourceValidator = new SourceValidator(_attributeDataReader);
+
         _parser = new TypeParser.TypeParser(
-            new AttributeDataReader(new AttributeDataFactory()),
+            _attributeDataReader,
             _updaterHelper
             );
 
@@ -116,13 +124,13 @@ public class DtoFromBlGenerator : IIncrementalGenerator
         if (classes == null || classes.Length == 0)
             return;
 
-        if (!classes.Any(x => x.IsSourceValid))
+        InitOptions(classes, analyzer);
+
+        if (!_sourceValidator.IsSourcesValid(classes[0].Compilation, classes.Select(x => x.TypeSymbol)))
         {
-            LogHelper.Log(LogEventLevel.Warning, "Do not run generation as one from dtos is comiled with errors");
+            LogHelper.Log(LogEventLevel.Warning, "Do not run generation as one from dtos is compiled with errors");
             return;
         }
-
-        InitOptions(classes, analyzer);
 
         DebouncerFactory<ExecutorData>
             .GetForAction(ApplyGenerator, GlobalConfig.Instance.DebouncerConfig)
@@ -161,13 +169,8 @@ public class DtoFromBlGenerator : IIncrementalGenerator
                 },
                 (sc, ct) =>
                 {
-                    var diag = sc.SemanticModel
-                            .GetDiagnostics(cancellationToken: ct);
-                    var isSourceWithErrors = diag
-                            .Any(x => x.Severity == DiagnosticSeverity.Error);
-
                     LogHelper.Log(LogEventLevel.Verbose, "Collect: {node}", sc.ToTypeSymbol().Name);
-                    return new ClassData(sc.ToTypeSymbol(), (TypeDeclarationSyntax)sc.Node, !isSourceWithErrors);
+                    return new ClassData(sc.ToTypeSymbol(), (TypeDeclarationSyntax)sc.Node, sc.SemanticModel.Compilation);
                 })
             .Where(x => _parser.CanParse(x.TypeDeclaration))
             .Collect();
