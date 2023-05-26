@@ -24,7 +24,6 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
-using Serilog;
 using Serilog.Events;
 
 namespace AutoDto.SourceGen;
@@ -34,7 +33,6 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 {
     private ITypeParser _parser;
     private IMetadataUpdaterHelper _updaterHelper;
-    private IAttributeDataReader _attributeDataReader;
     private ISourceValidator _sourceValidator;
 
     private class ClassData
@@ -66,10 +64,9 @@ public class DtoFromBlGenerator : IIncrementalGenerator
     private static int id = 0;
     private int currId = 0;
 
-    public DtoFromBlGenerator() : this(false, () => { })
-    { }
+    public DtoFromBlGenerator() : this(false) { }
 
-    public DtoFromBlGenerator(bool allowMultiInstance, Action onExecute)
+    public DtoFromBlGenerator(bool allowMultiInstance, Action onExecute = null)
     {
         currId = Interlocked.Increment(ref id);
 
@@ -81,17 +78,17 @@ public class DtoFromBlGenerator : IIncrementalGenerator
                 new ConflictNamesChecker()
             });
 
-        _attributeDataReader = new AttributeDataReader(new AttributeDataFactory());
+        var attributeDataReader = new AttributeDataReader(new AttributeDataFactory());
 
-        _sourceValidator = new SourceValidator(_attributeDataReader);
+        _sourceValidator = new SourceValidator(attributeDataReader);
 
         _parser = new TypeParser.TypeParser(
-            _attributeDataReader,
+            attributeDataReader,
             _updaterHelper
             );
 
         _allowMultiInstance = allowMultiInstance;
-        _onExecute = onExecute;
+        _onExecute = onExecute ?? (() => { });
     }
 
     private bool _allowMultiInstance;
@@ -167,7 +164,7 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 
                     return true;
                 },
-                (sc, ct) =>
+                (sc, _) =>
                 {
                     LogHelper.Log(LogEventLevel.Verbose, "Collect: {node}", sc.ToTypeSymbol().Name);
                     return new ClassData(sc.ToTypeSymbol(), (TypeDeclarationSyntax)sc.Node, sc.SemanticModel.Compilation);

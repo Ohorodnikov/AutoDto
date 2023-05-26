@@ -54,10 +54,7 @@ internal class TypeParser : ITypeParser
             return name == searchedAttr1 || name == searchedAttr2;
         });
 
-        if (hasAttr)
-            LogHelper.Log(LogEventLevel.Verbose, "Type {typeName} can be parsed", typeDeclaration.Identifier.Text);
-        else
-            LogHelper.Log(LogEventLevel.Verbose, "Type {typeName} can NOT be parsed", typeDeclaration.Identifier.Text);
+        LogHelper.Log(LogEventLevel.Verbose, "Type {typeName} can {not} be parsed", typeDeclaration.Identifier.Text, hasAttr ? "" : "NOT");
 
         return hasAttr;
     }
