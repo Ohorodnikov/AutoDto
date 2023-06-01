@@ -36,6 +36,8 @@ internal class SourceValidator : ISourceValidator
 
         foreach (var dtoSymbol in dtosSymbols)
         {
+            LogHelper.Logger.Debug("Check {dtoName} source to be valid", dtoSymbol.Name);
+
             var blSymbol = GetBlTypeSymbol(dtoSymbol);
             var allSymbols = Enumerable.Union(
                                             GetHierarchyTypesSymbols(dtoSymbol),
@@ -69,18 +71,25 @@ internal class SourceValidator : ISourceValidator
         var srs = typeSymbol.DeclaringSyntaxReferences;
 
         if (srs == null)
-            return true;        
+            return true;
+
+        LogHelper.Logger.Debug("Check '{type}' on errors", typeSymbol.Name);
 
         foreach (var sr in srs)
         {
             if (sr.SyntaxTree == null) 
                 continue;
 
-            if (!isFileWithError(sr.SyntaxTree.FilePath))
+            var filePath = sr.SyntaxTree.FilePath;
+
+            if (!isFileWithError(filePath))
                 continue;
             
             if (!IsSyntaxRefValid(sr))
+            {
+                LogHelper.Logger.Information("Type '{typeName}' has compilation errors in file '{filePath}'", typeSymbol.Name, filePath);
                 return false;
+            }
         }
 
         return true;
@@ -88,9 +97,12 @@ internal class SourceValidator : ISourceValidator
 
     private bool IsSyntaxRefValid(SyntaxReference syntaxReference)
     {
-        var sm = _compilation.GetSemanticModel(syntaxReference.SyntaxTree);
+        var st = syntaxReference.SyntaxTree;
+        var sm = _compilation.GetSemanticModel(st);
 
         var nodeSpan = syntaxReference.Span;
+
+        LogHelper.Logger.Debug("Check '{location}' on errors", st.GetLocation(nodeSpan));
 
         var diagnostics = Enumerable.Union(
                             sm.GetDeclarationDiagnostics(nodeSpan), 
