@@ -1,5 +1,6 @@
 ﻿using AutoDto.SourceGen.DtoAttributeData;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Text;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -8,87 +9,111 @@ namespace AutoDto.SourceGen.SourceValidation;
 
 internal interface ISourceValidator
 {
-    bool IsSourcesValid(Compilation compilation, IEnumerable<INamedTypeSymbol> symbols);
+    bool IsValid(IEnumerable<INamedTypeSymbol> symbols);
 }
 
 internal class SourceValidator : ISourceValidator
 {
-    private IAttributeDataReader _attributeDataReader;
+    private readonly IAttributeDataReader _attributeDataReader;
+    private readonly Compilation _compilation;
 
-    public SourceValidator(IAttributeDataReader attributeDataReader)
+    public SourceValidator(IAttributeDataReader attributeDataReader, Compilation compilation)
     {
         _attributeDataReader = attributeDataReader;
+        _compilation = compilation;
     }
 
-    public bool IsSourcesValid(Compilation compilation, IEnumerable<INamedTypeSymbol> symbols)
+    public bool IsValid(IEnumerable<INamedTypeSymbol> dtosSymbols)
     {
-        var errors = compilation
-                    .GetDiagnostics()
-                    .Where(x => x.Severity == DiagnosticSeverity.Error)
-                    .ToList();
+        var filesWithError = GetFilesWithErrors();
 
-        if (errors.Count == 0)
+        if (filesWithError.Count == 0)
             return true;
-
-        var filesWithError = errors
-                            .Select(x => x.Location.SourceTree.FilePath)
-                            .Distinct()
-                            .ToList();
 
         var skipFileNameCheck = filesWithError.Any(x => string.IsNullOrEmpty(x));
 
-        foreach (var symbol in symbols)
+        bool IsFileInErrorList(string filePath) => skipFileNameCheck || filesWithError.Contains(filePath);
+
+        foreach (var dtoSymbol in dtosSymbols)
         {
-            var allRelatedSyntaxTrees = GetInheritanceSyntaxTrees(symbol).Union(GetBlInheritance(symbol));
+            var blSymbol = GetBlTypeSymbol(dtoSymbol);
+            var allSymbols = Enumerable.Union(
+                                            GetHierarchyTypesSymbols(dtoSymbol),
+                                            GetHierarchyTypesSymbols(blSymbol));
 
-            foreach (var syntaxTree in allRelatedSyntaxTrees)
-            {
-                var filePath = syntaxTree.FilePath;
-                LogHelper.Logger.Debug("Check syntaxTree in file {filePath} on compilation errors", filePath);
-                if (skipFileNameCheck || filesWithError.Contains(filePath))
-                {
-                    var isValidSyntax = IsSyntaxValid(compilation, syntaxTree);
-                    LogHelper.Logger.Error("Checked syntax tree in file {filePath} is {status}", filePath, isValidSyntax);
-
-                    if (!isValidSyntax)
-                        return false; //Return on first found not compiled code
-                }
-            }
+            var valid = allSymbols.All(s => IsTypeSymbolValid(s, IsFileInErrorList));
+            if (!valid)
+                return false;
         }
 
         return true;
     }
 
-    private bool IsSyntaxValid(Compilation compilation, SyntaxTree syntaxTree)
+    private List<string> GetFilesWithErrors()
     {
-        var sm = compilation.GetSemanticModel(syntaxTree);
+        var filesWithError = _compilation
+                            .GetDiagnostics()
+                            .Where(x => x.Severity == DiagnosticSeverity.Error)
+                            .Select(x => x.Location.SourceTree.FilePath)
+                            .Distinct()
+                            .ToList();
 
-        var diagnostics = sm.GetDeclarationDiagnostics().Union(sm.GetSyntaxDiagnostics());
+        return filesWithError;
+    }
+
+    private bool IsTypeSymbolValid(ITypeSymbol typeSymbol, Func<string, bool> isFileWithError)
+    {
+        if (typeSymbol == null)
+            return true;
+
+        var srs = typeSymbol.DeclaringSyntaxReferences;
+
+        if (srs == null)
+            return true;        
+
+        foreach (var sr in srs)
+        {
+            if (sr.SyntaxTree == null) 
+                continue;
+
+            if (!isFileWithError(sr.SyntaxTree.FilePath))
+                continue;
+            
+            if (!IsSyntaxRefValid(sr))
+                return false;
+        }
+
+        return true;
+    }
+
+    private bool IsSyntaxRefValid(SyntaxReference syntaxReference)
+    {
+        var sm = _compilation.GetSemanticModel(syntaxReference.SyntaxTree);
+
+        var nodeSpan = syntaxReference.Span;
+
+        var diagnostics = Enumerable.Union(
+                            sm.GetDeclarationDiagnostics(nodeSpan), 
+                            sm.GetSyntaxDiagnostics(nodeSpan));
 
         return !diagnostics.Any(x => x.Severity == DiagnosticSeverity.Error);
     }
 
-    private IEnumerable<SyntaxTree> GetInheritanceSyntaxTrees(ITypeSymbol typeSymbol)
+    private INamedTypeSymbol GetBlTypeSymbol(ITypeSymbol dtoTypeSymbol)
+    {
+        foreach (var attr in dtoTypeSymbol.GetAttributes())
+            if (_attributeDataReader.TryRead(attr, out var data) && data is DtoFromData dtoFrom)
+                return dtoFrom.BlTypeSymbol;
+
+        return null;
+    }
+
+    private IEnumerable<ITypeSymbol> GetHierarchyTypesSymbols(ITypeSymbol typeSymbol)
     {
         while (typeSymbol != null)
         {
-            foreach (var loc in typeSymbol.Locations)
-                if (loc.SourceTree != null)
-                {
-                    LogHelper.Logger.Debug("Find syntax tree for {name} in location {location}", typeSymbol.Name, loc);
-                    yield return loc.SourceTree;
-                }
-
+            yield return typeSymbol;
             typeSymbol = typeSymbol.BaseType;
         }
-    }
-
-    private IEnumerable<SyntaxTree> GetBlInheritance(ITypeSymbol typeSymbol)
-    {
-        foreach (var attr in typeSymbol.GetAttributes())
-            if (_attributeDataReader.TryRead(attr, out var data) && data is DtoFromData dtoFrom)
-                return GetInheritanceSyntaxTrees(dtoFrom.BlTypeSymbol);
-
-        return Enumerable.Empty<SyntaxTree>();
     }
 }

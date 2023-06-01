@@ -4,30 +4,8 @@ using AutoDto.Tests.TestHelpers;
 
 namespace AutoDto.Tests.SyntaxGeneration;
 
-public class NotCompiledBlTest : BaseUnitTest
+public class NotCompiledBlTest : BaseCompilationErrorTests
 {
-    private void AssertGeneratorWasRunNTimes(int n, params string[] classCodes)
-    {
-        int i = 0;
-        void CalculateExecCount()
-        {
-            Interlocked.Increment(ref i);
-        }
-
-        var gen = GetGeneratorConfigured(false, CalculateExecCount);
-
-        var (compilations, msgs) = gen.RunWithMsgs(classCodes);
-
-        Assert.Equal(n, i);
-
-        Assert.Equal(classCodes.Length, compilations.SyntaxTrees.Count());
-    }
-
-    private void AssertGeneratorWasNotRun(params string[] classCodes)
-    {
-        AssertGeneratorWasRunNTimes(0, classCodes);
-    }
-
     private const string _blName = "MyBl";
     private const string _blNamespace = "AutoDto.Tests.Models";
 
@@ -42,7 +20,7 @@ using {_blNamespace};
 namespace {DtoCodeCreator.DtoTypNamespace};
 
 [DtoFrom(typeof({_blName}))]
-public class MyDto
+public partial class MyDto
 {{ }}
 ";
     }
@@ -120,7 +98,7 @@ public class {_blName}
     }}
 }}
 ";
-        AssertGeneratorWasRunNTimes(1, blModel, GetValidDtoForBl());
+        AssertGeneratorWasRunNTimes(1, 1, blModel, GetValidDtoForBl());
     }
 
     [Fact]

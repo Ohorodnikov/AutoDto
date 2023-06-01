@@ -34,7 +34,7 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 {
     private ITypeParser _parser;
     private IMetadataUpdaterHelper _updaterHelper;
-    private ISourceValidator _sourceValidator;
+    private SourceValidatorFactory _sourceValidatorFact;
 
     private class ClassData
     {
@@ -81,7 +81,7 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 
         var attributeDataReader = new AttributeDataReader(new AttributeDataFactory());
 
-        _sourceValidator = new SourceValidator(attributeDataReader);
+        _sourceValidatorFact = new SourceValidatorFactory(attributeDataReader);
 
         _parser = new TypeParser.TypeParser(
             attributeDataReader,
@@ -124,7 +124,9 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 
         InitOptions(classes, analyzer);
 
-        if (!_sourceValidator.IsSourcesValid(classes[0].Compilation, classes.Select(x => x.TypeSymbol)))
+        var validator = _sourceValidatorFact.Create(classes[0].Compilation);
+
+        if (!validator.IsValid(classes.Select(x => x.TypeSymbol)))
         {
             ctx.ReportDiagnostic(Diagnostic.Create(new CompilationSourceNotValidInfo().AsDiagnosticDescriptor(), Location.None));
             LogHelper.Log(LogEventLevel.Warning, "Do not run generation as one from dtos is compiled with errors");

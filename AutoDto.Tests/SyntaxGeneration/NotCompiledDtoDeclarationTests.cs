@@ -6,104 +6,141 @@ namespace AutoDto.Tests.SyntaxGeneration;
 
 public class NotCompiledDtoDeclarationTests : BaseCompilationErrorTests
 {
-    [Fact]
-    public void BrokenAttributeDefinitionTest()
+    private const string _blName = "MyBl";
+
+    private string GetValidBl()
     {
-        var type = typeof(SimpleType);
+        var blModel = @$"
+namespace {DtoCodeCreator.DtoTypNamespace};
+
+public class {_blName}
+{{
+    public int Id {{ get; set; }}
+    public string Name {{ get; set; }}
+}}
+";
+
+        return blModel;
+    }
+
+    [Fact]
+    public void BrokenOneOfPartialClassesTest()
+    {
         var attr = typeof(DtoFromAttribute);
 
-        var code = $@"
-using {type.Namespace};
+        var code1 = $@"
 using {attr.Namespace};
 
 namespace {DtoCodeCreator.DtoTypNamespace};
 
-[DtoFrom(typef({nameof(SimpleType)}))]
-public class MyDto
+[DtoFrom(typef({_blName}))]
+public partial class MyDto
 {{ }}
 ";
 
-        AssertGeneratorWasNotRun(code);
+        var code2 = $@"
+using {attr.Namespace};
+
+namespace {DtoCodeCreator.DtoTypNamespace};
+
+[DtoFrom(typeof({_blName}))]
+public partial class MyDto
+{{ 
+    publ int Id {{ get; set; }}
+}}
+";
+
+        AssertGeneratorWasNotRun(code1, code2, GetValidBl());
+    }
+
+    [Fact]
+    public void BrokenAttributeDefinitionTest()
+    {
+        var attr = typeof(DtoFromAttribute);
+
+        var code = $@"
+using {attr.Namespace};
+
+namespace {DtoCodeCreator.DtoTypNamespace};
+
+[DtoFrom(typef({_blName}))]
+public partial class MyDto
+{{ }}
+";
+
+        AssertGeneratorWasNotRun(code, GetValidBl());
     }
 
     [Fact]
     public void BrokenKeywordsTest()
     {
-        var type = typeof(SimpleType);
         var attr = typeof(DtoFromAttribute);
 
         var code = $@"
-using {type.Namespace};
 using {attr.Namespace};
 
 namespace {DtoCodeCreator.DtoTypNamespace};
 
-[DtoFrom(typeof({nameof(SimpleType)}))]
-puic class MyDto
+[DtoFrom(typeof({_blName}))]
+puic partial class MyDto
 {{ }}
 ";
 
-        AssertGeneratorWasNotRun(code);
+        AssertGeneratorWasNotRun(code, GetValidBl());
     }
 
     [Fact]
     public void BrokenOwnPropertyTest()
     {
-        var type = typeof(SimpleType);
         var attr = typeof(DtoFromAttribute);
 
         var code = $@"
-using {type.Namespace};
 using {attr.Namespace};
 
 namespace {DtoCodeCreator.DtoTypNamespace};
 
-[DtoFrom(typeof({nameof(SimpleType)}))]
-public class MyDto
+[DtoFrom(typeof({_blName}))]
+public partial class MyDto
 {{ 
     public strin MyOwnProperty {{ get; set; }}
 }}
 ";
 
-        AssertGeneratorWasNotRun(code);
+        AssertGeneratorWasNotRun(code, GetValidBl());
     }
 
     [Fact]
     public void BrokenOwnProperty2()
     {
-        var type = typeof(SimpleType);
         var attr = typeof(DtoFromAttribute);
 
         var code = $@"
-using {type.Namespace};
 using {attr.Namespace};
 
 namespace {DtoCodeCreator.DtoTypNamespace};
 
-[DtoFrom(typeof({nameof(SimpleType)}))]
-public class MyDto
+[DtoFrom(typeof({_blName}))]
+public partial class MyDto
 {{ 
     public string MyOwnProperty {{ get; se }}
 }}
 ";
 
-        AssertGeneratorWasNotRun(code);
+        AssertGeneratorWasNotRun(code, GetValidBl());
     }
 
     [Fact]
     public void BrokenMethodDefinitionTest()
     {
-        var type = typeof(SimpleType);
         var attr = typeof(DtoFromAttribute);
 
         var code = $@"
-using {type.Namespace};
 using {attr.Namespace};
 
 namespace {DtoCodeCreator.DtoTypNamespace};
 
-[DtoFrom(typeof({nameof(SimpleType)}))]
-public class MyDto
+[DtoFrom(typeof({_blName}))]
+public partial class MyDto
 {{ 
     public void MyMethod(bool param1, )
     {{
@@ -111,46 +148,42 @@ public class MyDto
 }}
 ";
 
-        AssertGeneratorWasNotRun(code);
+        AssertGeneratorWasNotRun(code, GetValidBl());
     }
 
     [Fact]
     public void PragmaErrorTest()
     {
-        var type = typeof(SimpleType);
         var attr = typeof(DtoFromAttribute);
 
         var code = $@"
-using {type.Namespace};
 using {attr.Namespace};
 
 namespace {DtoCodeCreator.DtoTypNamespace};
 
-[DtoFrom(typeof({nameof(SimpleType)}))]
-public class MyDto
+[DtoFrom(typeof({_blName}))]
+public partial class MyDto
 {{ 
     public int Id {{ get; set; }}
 #error MyTestError
 }}
 ";
 
-        AssertGeneratorWasNotRun(code);
+        AssertGeneratorWasNotRun(code, GetValidBl());
     }
 
     [Fact]
     public void BrokenMethodContentTest()
     {
-        var type = typeof(SimpleType);
         var attr = typeof(DtoFromAttribute);
 
         var code = $@"
-using {type.Namespace};
 using {attr.Namespace};
 
 namespace {DtoCodeCreator.DtoTypNamespace};
 
-[DtoFrom(typeof({nameof(SimpleType)}))]
-public class MyDto
+[DtoFrom(typeof({_blName}))]
+public partial class MyDto
 {{ 
     public void MyMethod(bool param1)
     {{
@@ -159,17 +192,15 @@ public class MyDto
 }}
 ";
 
-        AssertGeneratorWasRunNTimes(1, code);
+        AssertGeneratorWasRunNTimes(1, 1, code, GetValidBl());
     }
 
     [Fact]
     public void BrokenInheritanceDeclatarionTest()
     {
-        var type = typeof(SimpleType);
         var attr = typeof(DtoFromAttribute);
 
         var baseDtoCode = $@"
-using {type.Namespace};
 using {attr.Namespace};
 
 namespace {DtoCodeCreator.DtoTypNamespace};
@@ -181,46 +212,42 @@ public class BaseDto
 ";
 
         var code = $@"
-using {type.Namespace};
 using {attr.Namespace};
 
 namespace {DtoCodeCreator.DtoTypNamespace};
 
-[DtoFrom(typeof({nameof(SimpleType)}))]
+[DtoFrom(typeof({_blName}))]
 public class MyDto : BaseDto,
 {{ }}
 ";
-        AssertGeneratorWasNotRun(code, baseDtoCode);
+        AssertGeneratorWasNotRun(code, baseDtoCode, GetValidBl());
     }
 
     [Fact]
     public void BrokenBaseDtoTest()
     {
-        var type = typeof(SimpleType);
         var attr = typeof(DtoFromAttribute);
 
         var baseDtoCode = $@"
-using {type.Namespace};
 using {attr.Namespace};
 
 namespace {DtoCodeCreator.DtoTypNamespace};
 
-public class BaseDto
+public partial class BaseDto
 {{
     public str BaseDtoProp {{ get; set; }}
 }}
 ";
 
         var code = $@"
-using {type.Namespace};
 using {attr.Namespace};
 
 namespace {DtoCodeCreator.DtoTypNamespace};
 
-[DtoFrom(typeof({nameof(SimpleType)}))]
-public class MyDto : BaseDto
+[DtoFrom(typeof({_blName}))]
+public partial class MyDto : BaseDto
 {{ }}
 ";
-        AssertGeneratorWasNotRun(code, baseDtoCode);
+        AssertGeneratorWasNotRun(code, baseDtoCode, GetValidBl());
     }
 }
