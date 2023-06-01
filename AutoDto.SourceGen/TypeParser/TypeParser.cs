@@ -10,6 +10,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Serilog.Events;
 
 namespace AutoDto.SourceGen.TypeParser;
 
@@ -36,19 +37,26 @@ internal class TypeParser : ITypeParser
             return false;
 
         if (typeDeclaration.AttributeLists == null || typeDeclaration.AttributeLists.Count == 0)
+        {
+            LogHelper.Log(LogEventLevel.Verbose, "Type {typeName} doesnt have attributes. It cannot be a dto to parse", typeDeclaration.Identifier.Text);
             return false;
+        }
 
         var allAttrs = typeDeclaration.AttributeLists.SelectMany(x => x.Attributes);
 
         var searchedAttr1 = nameof(DtoFromAttribute);
         var searchedAttr2 = searchedAttr1.Replace(nameof(Attribute), "");
 
-        return allAttrs.Any(x =>
+        var hasAttr = allAttrs.Any(x =>
         {
             var name = x.Name.ToString();
 
             return name == searchedAttr1 || name == searchedAttr2;
         });
+
+        LogHelper.Log(LogEventLevel.Verbose, "Type {typeName} can {not} be parsed", typeDeclaration.Identifier.Text, hasAttr ? "" : "NOT");
+
+        return hasAttr;
     }
 
     public IDtoTypeMetadata Parse(INamedTypeSymbol namedType, SyntaxNode typeDeclaration)

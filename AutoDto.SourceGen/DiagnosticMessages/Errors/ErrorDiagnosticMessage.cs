@@ -13,5 +13,3 @@ internal abstract class ErrorDiagnosticMessage : BaseDiagnosticMessage
     }
     protected override string IdPrefix => "E";
 }
-
-
