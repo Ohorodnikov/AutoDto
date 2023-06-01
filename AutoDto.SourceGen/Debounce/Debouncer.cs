@@ -144,6 +144,8 @@ internal class Debouncer<TData> : IDebouncer<TData> where TData : class
             _action((TData)runEvent.GetData());
             sw.Stop();
 
+            LogHelper.Logger.Debug("Running event {id} takes {ms} ms", runEvent.Id, sw.ElapsedMilliseconds);
+
             _rebalancer.AddExecutionStatistic(sw.Elapsed);
         }
         catch (Exception e)

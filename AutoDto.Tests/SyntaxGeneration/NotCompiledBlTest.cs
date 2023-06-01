@@ -121,7 +121,6 @@ public class {_blName}
 }}
 ";
         AssertGeneratorWasRunNTimes(1, blModel, GetValidDtoForBl());
-        //AssertGeneratorWasNotRun(blModel, GetValidDtoForBl()); //TODO: must run once
     }
 
     [Fact]

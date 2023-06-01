@@ -10,6 +10,7 @@ using AutoDto.SourceGen.Configuration;
 using AutoDto.SourceGen.Debounce;
 using AutoDto.SourceGen.DiagnosticMessages;
 using AutoDto.SourceGen.DiagnosticMessages.Errors;
+using AutoDto.SourceGen.DiagnosticMessages.Infos;
 using AutoDto.SourceGen.DiagnosticMessages.Warnings;
 using AutoDto.SourceGen.DtoAttributeData;
 using AutoDto.SourceGen.Helpers;
@@ -125,6 +126,7 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 
         if (!_sourceValidator.IsSourcesValid(classes[0].Compilation, classes.Select(x => x.TypeSymbol)))
         {
+            ctx.ReportDiagnostic(Diagnostic.Create(new CompilationSourceNotValidInfo().AsDiagnosticDescriptor(), Location.None));
             LogHelper.Log(LogEventLevel.Warning, "Do not run generation as one from dtos is compiled with errors");
             return;
         }
