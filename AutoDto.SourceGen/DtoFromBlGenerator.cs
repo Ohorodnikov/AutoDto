@@ -10,6 +10,7 @@ using AutoDto.SourceGen.Configuration;
 using AutoDto.SourceGen.Debounce;
 using AutoDto.SourceGen.DiagnosticMessages;
 using AutoDto.SourceGen.DiagnosticMessages.Errors;
+using AutoDto.SourceGen.DiagnosticMessages.Infos;
 using AutoDto.SourceGen.DiagnosticMessages.Warnings;
 using AutoDto.SourceGen.DtoAttributeData;
 using AutoDto.SourceGen.Helpers;
@@ -17,6 +18,7 @@ using AutoDto.SourceGen.Metadatas;
 using AutoDto.SourceGen.MetadataUpdaters;
 using AutoDto.SourceGen.MetadataUpdaters.AllMetadatasUpdaters;
 using AutoDto.SourceGen.MetadataUpdaters.OneMetadataUpdaters;
+using AutoDto.SourceGen.SourceValidation;
 using AutoDto.SourceGen.TypeParser;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -32,17 +34,20 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 {
     private ITypeParser _parser;
     private IMetadataUpdaterHelper _updaterHelper;
+    private SourceValidatorFactory _sourceValidatorFact;
 
     private class ClassData
     {
-        public ClassData(INamedTypeSymbol typeSymbol, TypeDeclarationSyntax typeDeclaration)
+        public ClassData(INamedTypeSymbol typeSymbol, TypeDeclarationSyntax typeDeclaration, Compilation compilation)
         {
             TypeSymbol = typeSymbol;
             TypeDeclaration = typeDeclaration;
+            Compilation = compilation;
         }
 
         public INamedTypeSymbol TypeSymbol { get; }
         public TypeDeclarationSyntax TypeDeclaration { get; }
+        public Compilation Compilation { get; }
     }
 
     private class ExecutorData
@@ -60,10 +65,9 @@ public class DtoFromBlGenerator : IIncrementalGenerator
     private static int id = 0;
     private int currId = 0;
 
-    public DtoFromBlGenerator() : this(false)
-    { }
+    public DtoFromBlGenerator() : this(false) { }
 
-    public DtoFromBlGenerator(bool allowMultiInstance)
+    public DtoFromBlGenerator(bool allowMultiInstance, Action onExecute = null)
     {
         currId = Interlocked.Increment(ref id);
 
@@ -75,15 +79,21 @@ public class DtoFromBlGenerator : IIncrementalGenerator
                 new ConflictNamesChecker()
             });
 
+        var attributeDataReader = new AttributeDataReader(new AttributeDataFactory());
+
+        _sourceValidatorFact = new SourceValidatorFactory(attributeDataReader);
+
         _parser = new TypeParser.TypeParser(
-            new AttributeDataReader(new AttributeDataFactory()),
+            attributeDataReader,
             _updaterHelper
             );
 
         _allowMultiInstance = allowMultiInstance;
+        _onExecute = onExecute ?? (() => { });
     }
 
     private bool _allowMultiInstance;
+    private readonly Action _onExecute;
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -113,6 +123,15 @@ public class DtoFromBlGenerator : IIncrementalGenerator
             return;
 
         InitOptions(classes, analyzer);
+
+        var validator = _sourceValidatorFact.Create(classes[0].Compilation);
+
+        if (!validator.IsValid(classes.Select(x => x.TypeSymbol)))
+        {
+            ctx.ReportDiagnostic(Diagnostic.Create(new CompilationSourceNotValidInfo().AsDiagnosticDescriptor(), Location.None));
+            LogHelper.Log(LogEventLevel.Warning, "Do not run generation as one from dtos is compiled with errors");
+            return;
+        }
 
         DebouncerFactory<ExecutorData>
             .GetForAction(ApplyGenerator, GlobalConfig.Instance.DebouncerConfig)
@@ -152,7 +171,7 @@ public class DtoFromBlGenerator : IIncrementalGenerator
                 (sc, _) =>
                 {
                     LogHelper.Log(LogEventLevel.Verbose, "Collect: {node}", sc.ToTypeSymbol().Name);
-                    return new ClassData(sc.ToTypeSymbol(), (TypeDeclarationSyntax)sc.Node);
+                    return new ClassData(sc.ToTypeSymbol(), (TypeDeclarationSyntax)sc.Node, sc.SemanticModel.Compilation);
                 })
             .Where(x => _parser.CanParse(x.TypeDeclaration))
             .Collect();
@@ -160,6 +179,7 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 
     private void ApplyGenerator(ExecutorData data)
     {
+        _onExecute();
         LogHelper.Logger.Verbose("#### Start generator executing ####");
 
         if (data == null)
