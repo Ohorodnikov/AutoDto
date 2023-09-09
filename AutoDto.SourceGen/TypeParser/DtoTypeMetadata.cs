@@ -24,6 +24,8 @@ internal class DtoTypeMetadata : IDtoTypeMetadata
     public List<IPropertyMetadata> Properties { get; set; } = new();
     public Location Location { get; set; }
 
+    public bool IsDefinitionValid => !DiagnosticMessages.Any(x => x.message.Severity == DiagnosticSeverity.Error);
+
     public string ToClassString()
     {
         var sb = new StringBuilder();

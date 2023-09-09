@@ -20,6 +20,7 @@ internal interface IDtoTypeMetadata
     ITypeSymbol TypeSymbol { get; set; }
     List<(Location location, IDiagnosticMessage message)> DiagnosticMessages { get; }
     bool IsMain { get; set; }
+    bool IsDefinitionValid { get; }
     RelationStrategy RelationStrategy { get; set; }
     List<IPropertyMetadata> Properties { get; set; }
 

@@ -191,11 +191,13 @@ public class DtoFromBlGenerator : IIncrementalGenerator
         var classes = data.Classes;
         var context = data.Context;
         LogHelper.Logger.Information("Apply for {count} classes", classes.Count);
-        var dtoTypeMetadatas = CreateMetadata(classes);
+        var allMetadatas = CreateMetadata(classes).ToList();
 
-        _updaterHelper.ApplyCommonRules(dtoTypeMetadatas);
+        var validMetadatas = GroupDtoMetadatasByBlType(allMetadatas.Where(x => x.IsDefinitionValid));
 
-        foreach (var dtoMetadata in dtoTypeMetadatas.SelectMany(x => x.Value))
+        _updaterHelper.ApplyCommonRules(validMetadatas);
+
+        foreach (var dtoMetadata in allMetadatas)
         {
             WriteMessages(dtoMetadata, context);
 
@@ -203,10 +205,8 @@ public class DtoFromBlGenerator : IIncrementalGenerator
         }
     }
 
-    private Dictionary<string, List<IDtoTypeMetadata>> CreateMetadata(List<ClassData> classes)
+    private IEnumerable<IDtoTypeMetadata> CreateMetadata(List<ClassData> classes)
     {
-        var dtoTypeMetadatas = new Dictionary<string, List<IDtoTypeMetadata>>(classes.Count);
-
         foreach (var classData in classes)
         {
             LogHelper.Logger.Verbose("Create metadata for class {class}", classData.TypeSymbol.Name);
@@ -215,12 +215,19 @@ public class DtoFromBlGenerator : IIncrementalGenerator
 
             LogHelper.Logger.Debug("Successfully parsed {dtoType} with master type {blType}", md.Name, md.BlFullName);
 
-            dtoTypeMetadatas
-                .GetOrAdd(md.BlFullName, () => new List<IDtoTypeMetadata>())
-                .Add(md);
+            yield return md;
         }
+    }
 
-        return dtoTypeMetadatas;
+    private Dictionary<string, List<IDtoTypeMetadata>> GroupDtoMetadatasByBlType(IEnumerable<IDtoTypeMetadata> metadatas)
+    {
+        var validMetadatas = new Dictionary<string, List<IDtoTypeMetadata>>();
+        foreach (var metadata in metadatas)
+        {
+            validMetadatas
+                .GetOrAdd(metadata.BlFullName, () => new List<IDtoTypeMetadata>())
+                .Add(metadata);
+        }
     }
 
     private void AddSourceIfNoErrors(IDtoTypeMetadata metadata, SourceProductionContext context)

@@ -7,9 +7,11 @@ using AutoDto.SourceGen.DtoAttributeData;
 
 namespace AutoDto.SourceGen.MetadataUpdaters.OneMetadataUpdaters;
 
-internal class DtoFromMetadataUpdater : AttributeMetadataUpdater<DtoFromData>
+internal abstract class BaseDtoFromMetadataUpdater<TData> 
+    : AttributeMetadataUpdater<TData>
+    where TData : DtoFromData
 {
-    public override void Update(IDtoTypeMetadata metadata, DtoFromData attributeData)
+    public override void Update(IDtoTypeMetadata metadata, TData attributeData)
     {
         metadata.RelationStrategy = attributeData.RelationStrategy;
         metadata.BlFullName = attributeData.BlTypeSymbol.ToDisplayString();
@@ -18,3 +20,7 @@ internal class DtoFromMetadataUpdater : AttributeMetadataUpdater<DtoFromData>
             metadata.Properties.Add(new PropertyMetadata(property));
     }
 }
+
+internal class DtoFromMetadataUpdater : BaseDtoFromMetadataUpdater<DtoFromData> { }
+
+internal class DtoForMetadataUpdater : BaseDtoFromMetadataUpdater<DtoForData> { }

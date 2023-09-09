@@ -114,8 +114,14 @@ internal class SourceValidator : ISourceValidator
     private INamedTypeSymbol GetBlTypeSymbol(ITypeSymbol dtoTypeSymbol)
     {
         foreach (var attr in dtoTypeSymbol.GetAttributes())
-            if (_attributeDataReader.TryRead(attr, out var data) && data is DtoFromData dtoFrom)
-                return dtoFrom.BlTypeSymbol;
+            if (_attributeDataReader.TryRead(attr, out var data))
+            {
+                if (data is DtoFromData dtoFrom)
+                    return dtoFrom.BlTypeSymbol;
+
+                if (data is DtoForData dtoFor)
+                    return dtoFor.BlTypeSymbol;
+            }                
 
         return null;
     }

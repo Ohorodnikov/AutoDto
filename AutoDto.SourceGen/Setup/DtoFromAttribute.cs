@@ -10,3 +10,14 @@ public sealed class DtoFromAttribute : Attribute
         Type = type;
     }
 }
+
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
+public sealed class DtoForAttribute : Attribute
+{
+    public Type Type { get; }
+
+    public DtoForAttribute(Type type, RelationStrategy relationStrategy = RelationStrategy.None)
+    {
+        Type = type;
+    }
+}

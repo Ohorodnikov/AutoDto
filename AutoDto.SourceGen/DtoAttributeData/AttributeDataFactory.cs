@@ -16,6 +16,7 @@ internal class AttributeDataFactory : IAttributeDataFactory
     private static readonly Dictionary<string, Func<IDtoAttributeData>> _attr2Data = new Dictionary<string, Func<IDtoAttributeData>>
     {
         { typeof(DtoFromAttribute).FullName, () => new DtoFromData() },
+        { typeof(DtoForAttribute).FullName, () => new DtoForData() },
         { typeof(DtoIgnoreAttribute).FullName, () => new DtoIgnoreData() },
         { typeof(DtoMainAttribute).FullName, () => new DtoMainData() },
     };

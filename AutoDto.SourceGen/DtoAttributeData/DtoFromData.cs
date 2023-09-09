@@ -6,6 +6,8 @@ using Microsoft.CodeAnalysis;
 
 namespace AutoDto.SourceGen.DtoAttributeData;
 
+internal class DtoForData : DtoFromData { }
+
 internal class DtoFromData : DtoAttributeData
 {
     protected override Action<TypedConstant>[] InitActions()

@@ -31,6 +31,12 @@ internal class TypeParser : ITypeParser
         _updaterHelper = updaterFactory;
     }
 
+    private static string[] _attributes = new[]
+    {
+        nameof(DtoFromAttribute),
+        nameof(DtoForAttribute)
+    };
+
     public bool CanParse(SyntaxNode syntaxNode)
     {
         if (syntaxNode is not TypeDeclarationSyntax typeDeclaration)
@@ -42,17 +48,9 @@ internal class TypeParser : ITypeParser
             return false;
         }
 
-        var allAttrs = typeDeclaration.AttributeLists.SelectMany(x => x.Attributes);
+        var allAttrs = GetAllTypeAttributesNames(typeDeclaration);
 
-        var searchedAttr1 = nameof(DtoFromAttribute);
-        var searchedAttr2 = searchedAttr1.Replace(nameof(Attribute), "");
-
-        var hasAttr = allAttrs.Any(x =>
-        {
-            var name = x.Name.ToString();
-
-            return name == searchedAttr1 || name == searchedAttr2;
-        });
+        var hasAttr = allAttrs.Any(_attributes.Contains);
 
         LogHelper.Log(LogEventLevel.Verbose, "Type {typeName} can {not} be parsed", typeDeclaration.Identifier.Text, hasAttr ? "" : "NOT");
 
@@ -75,11 +73,21 @@ internal class TypeParser : ITypeParser
             Location = td.GetLocation(),
         };
 
-        ValidateDeclaration(metadata);
+        var validationResult = ValidateDeclaration(metadata);
+        var hasErrors = false;
+        foreach (var diag in validationResult)
+        {
+            metadata.DiagnosticMessages.Add((metadata.Location, diag));
+            if (diag.Severity == DiagnosticSeverity.Error)
+                hasErrors = true;
+        }
 
-        var attrDatas = ReadAttributes(namedType);
+        if (!hasErrors)
+        {
+            var attrDatas = ReadAttributes(namedType);
 
-        _updaterHelper.InitByAttributes(metadata, attrDatas);
+            _updaterHelper.InitByAttributes(metadata, attrDatas);
+        }
 
         return metadata;
     }
@@ -98,16 +106,44 @@ internal class TypeParser : ITypeParser
         return attrDatas;
     }
 
-    private void ValidateDeclaration(IDtoTypeMetadata metadata)
+    private IEnumerable<BaseDiagnosticMessage> ValidateDeclaration(IDtoTypeMetadata metadata)
     {
-        if (IsTypeHasPartialKeyword(metadata.TypeDeclaration))
-            return;
+        var diag = new List<BaseDiagnosticMessage>();
+        if (!IsTypeHasPartialKeyword(metadata.TypeDeclaration))
+            diag.Add(new DtoNotPartialError(metadata.Name));
 
-        metadata.DiagnosticMessages.Add((metadata.Location, new DtoNotPartialError(metadata.Name)));
+        if (!HasOnlyOneDtoDelarationAttribute(metadata.TypeDeclaration))
+            diag.Add(new MoreThanOneDtoDeclarationAttributeError());
+
+        return diag;
     }
 
     private bool IsTypeHasPartialKeyword(TypeDeclarationSyntax typeDeclaration)
     {
         return typeDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword));
+    }
+
+    private bool HasOnlyOneDtoDelarationAttribute(TypeDeclarationSyntax typeDeclaration)
+    {
+        var attrs = GetAllTypeAttributesNames(typeDeclaration);
+
+        var count = attrs.Count(_attributes.Contains);
+
+        return count == 1;
+    }
+
+    private IEnumerable<string> GetAllTypeAttributesNames(TypeDeclarationSyntax typeDeclaration)
+    {
+        return typeDeclaration
+            .AttributeLists
+            .SelectMany(x => x.Attributes)
+            .Select(x => 
+            {
+                var name = x.Name.ToString();
+                if (!name.EndsWith(nameof(Attribute)))
+                    name += nameof(Attribute);
+
+                return name;
+            });
     }
 }

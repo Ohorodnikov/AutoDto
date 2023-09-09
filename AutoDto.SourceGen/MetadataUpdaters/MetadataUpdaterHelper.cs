@@ -25,9 +25,16 @@ internal class MetadataUpdaterHelper : IMetadataUpdaterHelper
 
     public void InitByAttributes(IDtoTypeMetadata metadata, IEnumerable<IDtoAttributeData> attributes)
     {
-        var dtoFrom = attributes.OfType<DtoFromData>().Single();
+        var dtoFrom = attributes.OfType<DtoFromData>().SingleOrDefault();
+        var dtoFor = attributes.OfType<DtoForData>().SingleOrDefault();
 
-        InitByAttribute(metadata, dtoFrom); //should be first as main attribute
+        if (dtoFrom != null && dtoFor != null)
+            throw new NotSupportedException("Only one attribute is allowed");
+
+        if (dtoFrom == null && dtoFor == null)
+            throw new NotSupportedException("One of attributes [DtoFrom], [DtoFor] must exists");
+
+        InitByAttribute(metadata, dtoFrom ?? dtoFor); //should be first as main attribute
 
         foreach (var attr in attributes)
         {

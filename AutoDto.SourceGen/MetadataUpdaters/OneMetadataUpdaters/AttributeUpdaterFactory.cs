@@ -15,6 +15,7 @@ internal class AttributeUpdaterFactory : IAttributeUpdaterFactory
     private static Dictionary<Type, Func<IAttributeMetadataUpdater>> _metadataMap = new Dictionary<Type, Func<IAttributeMetadataUpdater>>
     {
         { typeof(DtoFromData), () => new DtoFromMetadataUpdater() },
+        { typeof(DtoForData), () => new DtoForMetadataUpdater() },
         { typeof(DtoIgnoreData), () => new DtoIgnoreMetadataUpdater() },
         { typeof(DtoMainData), () => new DtoMainMetadataUpdater() },
     };
