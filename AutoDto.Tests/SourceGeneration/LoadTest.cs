@@ -9,131 +9,115 @@ using System.Threading.Tasks;
 using AutoDto.SourceGen;
 using AutoDto.Setup;
 using System.Diagnostics;
+using AutoDto.Tests.TestHelpers;
+using AutoDto.Tests.TestHelpers.CodeBuilder.Elements;
+using AutoDto.Tests.TestHelpers.CodeBuilder.Builders;
 
 namespace AutoDto.Tests.SourceGeneration;
 
-public class LoadTests : BaseUnitTest
+public class LoadTestFixture : IDisposable
 {
-    [Fact]
-    [Trait("Category", "Load")]
-    public void CreateNDtos()
+    public List<ClassElement> BlClasses { get; private set; }
+    public List<ClassElement> DtoClasses { get; private set; }
+    public List<ClassElement> ExtraClasses { get; private set; }
+
+    public CSharpCompilation Compilation { get; private set; }
+
+    public LoadTestFixture()
     {
         var blModelsCount = 1000;
         var extraTypesCount = 10_000;
-        var bls = CreateBlModels(blModelsCount, out var createdTypes);
 
-        var extraTypes = CreateBlModels(extraTypesCount, out _);
+        BlClasses = CreateBlModels(blModelsCount);
+        ExtraClasses = CreateBlModels(extraTypesCount);
+        DtoClasses = CreateDtoModels(BlClasses);
 
-        var dtos = CreateDtoModels(createdTypes, out var createdDtos);
+        var generator = new GeneratorRunner();
 
-        var systemAssemblyRefs = Generator.GetSystemRefs();
-        var commonRefs = Generator.GetCommonRefs();
+        var allRefs = generator.GetSystemRefs()
+               .Union(generator.GetCommonRefs());
 
-        var allRefs = systemAssemblyRefs
-            .Union(commonRefs)
+        SyntaxTree CreateFile(List<ClassElement> classes)
+        {
+            var fileContent = string.Join(Environment.NewLine, classes.Select(x => x.GenerateCode()));
+            return CSharpSyntaxTree.ParseText(fileContent);
+        }
+
+        var inputSourceTrees = new[]
+            {
+                CreateFile(BlClasses),
+                CreateFile(DtoClasses),
+                CreateFile(ExtraClasses),
+            };
+
+        inputSourceTrees =
+                      BlClasses.Select(x => CSharpSyntaxTree.ParseText(x.GenerateCode()))
+            .Union(DtoClasses.Select(x => CSharpSyntaxTree.ParseText(x.GenerateCode())))
+            .Union(ExtraClasses.Select(x => CSharpSyntaxTree.ParseText(x.GenerateCode())))
+            .ToArray()
             ;
 
-        var compilation = CSharpCompilation.Create(
+        Compilation = CSharpCompilation.Create(
             "MyCompilation",
-            syntaxTrees: new[]
-            {
-                CSharpSyntaxTree.ParseText(bls),
-                CSharpSyntaxTree.ParseText(dtos),
-                CSharpSyntaxTree.ParseText(extraTypes),
-            },
+            syntaxTrees: inputSourceTrees,
             references: allRefs,
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        Generator.Compile(compilation); //to see compile errs if any in code
+        generator.Compile(Compilation); //to see compile errs if any in code
 
-        var driver = CSharpGeneratorDriver.Create(new[] { new DtoFromBlGenerator(true) });
-
-        var sw = new Stopwatch();
-        sw.Start();
-        driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
-        sw.Stop();
-
-        Assert.Equal(3 + createdDtos, outputCompilation.SyntaxTrees.Count());
     }
 
-    private string CreateDtoModels(List<string> blTypes, out int createdDtos)
+    public void Dispose()
     {
-        createdDtos = 0;
-        var sb = new StringBuilder();
+        
+    }
 
-        sb.AppendLine("using System;");
-        sb.AppendLine("using System.Collections;");
-        sb.AppendLine("using System.Collections.Generic;");
-        sb.AppendLine("using AutoDto.Tests.SourceGeneration.Models.Generated;");
-        sb.AppendLine("using AutoDto.Setup;");
-        sb.AppendLine();
-
-        sb.AppendLine("namespace AutoDto.Tests.SourceGeneration.Models.Dtos.Generated;");
-
-        sb.AppendLine();
-        //var dtos = new List<DtoData>(blTypes.Count);
+    private List<ClassElement> CreateDtoModels(List<ClassElement> blTypes)
+    {
+        var res = new List<ClassElement>(blTypes.Count * 3);
 
         foreach (var blType in blTypes)
         {
-
             var dtosPerBl = Random.Shared.Next(5);
+            var blName = blType.Name;
 
             for (int i = 0; i < dtosPerBl; i++)
             {
-                sb.AppendLine();
+                var dtoBuilder = new DtoClassBuilder(blName + "_Dto_" + i, DtoClassBuilder.DtoAttributeType.DtoFrom, blName);
 
-                createdDtos++;
+                dtoBuilder
+                    .SetNamespace("AutoDto.Tests.SourceGeneration.Models.Dtos")
+                    .AddUsing("System")
+                    .AddUsing("System.Collections")
+                    .AddUsing("System.Collections.Generic")
+                    .AddUsing("AutoDto.Tests.SourceGeneration.Models")
+                    .AddUsing("AutoDto.Setup");
 
                 if (i == 0 && dtosPerBl > 1)
-                {
-                    var mainAttr = typeof(DtoMainAttribute).Name.Replace(nameof(Attribute), "");
-                    sb.Append("[").Append(mainAttr).Append("]").AppendLine();
-                }
+                    dtoBuilder.AddAttribute("DtoMain");
 
-                var name = typeof(DtoFromAttribute).Name.Replace(nameof(Attribute), "");
+                dtoBuilder.SetRelationStrategy((RelationStrategy)(Random.Shared.Next(1, 4)));
 
-                var strategy = (RelationStrategy)(Random.Shared.Next(1, 4));
-
-                sb
-                    .Append("[")
-                    .Append(name)
-                    .Append("(typeof(")
-                    .Append(blType)
-                    .Append("), ")
-                    .Append(nameof(RelationStrategy))
-                    .Append(".")
-                    .Append(strategy)
-                    .Append(")]")
-                    .AppendLine()
-                    ;
-
-                sb.Append("public partial class ").Append(blType).Append("_Dto").Append(i).AppendLine("{ }");
+                res.Add(dtoBuilder.Build());
             }
         }
 
-        return sb.ToString();
+        return res;
     }
 
-    private string CreateBlModels(int count, out List<string> createdTypes)
+    private List<ClassElement> CreateBlModels(int count)
     {
-        var sb = new StringBuilder();
+        var res = new List<ClassElement>(count);
 
-        sb.AppendLine("using System;");
-        sb.AppendLine("using System.Collections;");
-        sb.AppendLine("using System.Collections.Generic;");
-        sb.AppendLine();
-
-        sb.AppendLine("namespace AutoDto.Tests.SourceGeneration.Models.Generated;");
-
-        createdTypes = new List<string>();
+        var createdTypes = new List<string>();
         for (int i = 0; i < count; i++)
         {
             var className = CreateUniqueName();
             createdTypes.Add(className);
-            GenerateClass(className, createdTypes, sb);
+            res.Add(GenerateClass(className, createdTypes));
         }
 
-        return sb.ToString();
+        return res;
     }
 
     private string CreateUniqueName()
@@ -141,19 +125,20 @@ public class LoadTests : BaseUnitTest
         return "N" + Guid.NewGuid().ToString("N");
     }
 
-    private StringBuilder GenerateClass(string className, List<string> referenceTypes, StringBuilder sb)
+    private ClassElement GenerateClass(string className, List<string> referenceTypes)
     {
         var propsCount = Random.Shared.Next(5, 15);
 
-        var propTypes = GetBaseTypes();
-        propTypes.AddRange(referenceTypes);
+        var propTypes = GetBaseTypes().Union(referenceTypes).ToList();
 
-        sb.AppendLine();
-
-        sb.AppendLine("[Serializable]");
-
-        sb.Append("public class ").AppendLine(className);
-        sb.AppendLine("{");
+        var classBuilder = new ClassBuilder(className)
+            .SetNamespace("AutoDto.Tests.SourceGeneration.Models")
+            .AddUsing("System")
+            .AddUsing("System.Collections")
+            .AddUsing("System.Collections.Generic")
+            .AddAttribute("Serializable")
+            .As<ClassBuilder>()
+            ;
 
         for (int i = 0; i < propsCount; i++)
         {
@@ -162,12 +147,12 @@ public class LoadTests : BaseUnitTest
             if (Random.Shared.Next(10) < 4)
                 propType = CreateCollectionType(propType);
 
-            sb.Append("     ").Append("public ").Append(propType).Append(" ").Append(CreateUniqueName()).Append(" { get; set; }").AppendLine().AppendLine();
+            var propBuilder = new PropertyBuilder(CreateUniqueName()).SetReturnType(propType);
+
+            classBuilder.AddMember(propBuilder.Build());
         }
 
-        sb.AppendLine("}");
-
-        return sb;
+        return classBuilder.Build();
     }
 
     private string CreateCollectionType(string elementName)
@@ -211,5 +196,32 @@ public class LoadTests : BaseUnitTest
         .ToList();
     }
 
-     
+}
+
+[CollectionDefinition("Load collection")]
+public class LoadTestCollection : ICollectionFixture<LoadTestFixture>
+{
+
+}
+
+[Collection("Load collection")]
+public class LoadTests : BaseUnitTest
+{
+    private readonly LoadTestFixture _testFixture;
+
+    public LoadTests(LoadTestFixture testFixture)
+    {
+        _testFixture = testFixture;
+    }
+
+    [Fact]
+    [Trait("Category", "Load")]
+    public void CreateNDtos()
+    {
+        var driver = CSharpGeneratorDriver.Create(new[] { new DtoFromBlGenerator(true) });
+
+        driver.RunGeneratorsAndUpdateCompilation(_testFixture.Compilation, out var outputCompilation, out var diagnostics);
+
+        Assert.Equal(_testFixture.Compilation.SyntaxTrees.Length + _testFixture.DtoClasses.Count, outputCompilation.SyntaxTrees.Count());
+    }
 }
