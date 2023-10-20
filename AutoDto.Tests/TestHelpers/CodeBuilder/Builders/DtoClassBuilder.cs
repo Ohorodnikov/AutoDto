@@ -28,9 +28,7 @@ public class DtoClassBuilder : ClassBuilder
 
     protected string BlType { get; private set; }
     protected DtoAttributeType DtoAttribute { get; private set; } = DtoAttributeType.NotInited;
-    protected RelationStrategy Strategy { get; private set; } = RelationStrategy.None;
-
-    
+    protected RelationStrategy Strategy { get; private set; } = RelationStrategy.None;    
 
     protected override ClassElement BuildImpl()
     {

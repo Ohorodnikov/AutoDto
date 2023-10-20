@@ -94,7 +94,7 @@ public class LoadTestFixture : IDisposable
                     .AddUsing("AutoDto.Setup");
 
                 if (i == 0 && dtosPerBl > 1)
-                    dtoBuilder.AddAttribute("DtoMain");
+                    dtoBuilder.AddAttribute(typeof(DtoMainAttribute));
 
                 dtoBuilder.SetRelationStrategy((RelationStrategy)(Random.Shared.Next(1, 4)));
 
@@ -147,7 +147,7 @@ public class LoadTestFixture : IDisposable
             if (Random.Shared.Next(10) < 4)
                 propType = CreateCollectionType(propType);
 
-            var propBuilder = new PropertyBuilder(CreateUniqueName()).SetReturnType(propType);
+            var propBuilder = new PropertyBuilder(CreateUniqueName(), propType);
 
             classBuilder.AddMember(propBuilder.Build());
         }

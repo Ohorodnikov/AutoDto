@@ -4,7 +4,13 @@ namespace AutoDto.Tests.TestHelpers.CodeBuilder.Builders;
 
 public class FieldBuilder : BaseMemberBuilder<FieldMember>
 {
-    public FieldBuilder(string name) : base(name)
+    public FieldBuilder(string name, Type returnType) 
+        : base(name, returnType) 
+    { 
+    }
+
+    public FieldBuilder(string name, string returnType) 
+        : base(name, returnType)
     {
     }
 

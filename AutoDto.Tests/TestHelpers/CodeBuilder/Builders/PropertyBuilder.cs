@@ -4,7 +4,13 @@ namespace AutoDto.Tests.TestHelpers.CodeBuilder.Builders;
 
 public class PropertyBuilder : BaseMemberBuilder<PropertyMember>
 {
-    public PropertyBuilder(string name) : base(name)
+    public PropertyBuilder(string name, Type returnType) 
+        : this(name, returnType.Name) 
+    { 
+    }
+
+    public PropertyBuilder(string name, string returnType) 
+        : base(name, returnType)
     {
         Get = (Visibility, true);
         Set = (Visibility, true);

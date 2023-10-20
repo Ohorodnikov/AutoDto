@@ -4,7 +4,13 @@ namespace AutoDto.Tests.TestHelpers.CodeBuilder.Builders;
 
 public class MethodBuilder : BaseMemberBuilder<MethodMember>
 {
-    public MethodBuilder(string name) : base(name)
+    public MethodBuilder(string name, Type returnType) 
+        : base(name, returnType) 
+    { 
+    }
+
+    public MethodBuilder(string name, string returnType) 
+        : base(name, returnType)
     {
     }
 

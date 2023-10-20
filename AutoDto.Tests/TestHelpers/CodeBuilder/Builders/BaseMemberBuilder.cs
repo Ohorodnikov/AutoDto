@@ -2,9 +2,15 @@
 
 public abstract class BaseMemberBuilder<TMember> : BaseElementBuilder<TMember>
 {
-    protected BaseMemberBuilder(string name) : base(name)
+    protected BaseMemberBuilder(string name, Type returnType) 
+        : this(name, returnType.Name)
     {
-        ReturnType = "void";
+    }
+
+    protected BaseMemberBuilder(string name, string returnType) 
+        : base(name)
+    {
+        ReturnType = returnType;
     }
 
     protected string ReturnType { get; set; }

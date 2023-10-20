@@ -65,14 +65,31 @@ public abstract class BaseElementBuilder<TElementInfo>
         return this;
     }
 
-    public BaseElementBuilder<TElementInfo> AddAttribute(string name, string @namespace = null, params string[] arguments)
+    public BaseElementBuilder<TElementInfo> AddAttribute(Type attribute, params string[] arguments)
     {
-        Attributes.Add(new AttributeInfo(name, arguments));
+        var baseCl = attribute;
+        var typeIsAttr = false;
+        while (baseCl != typeof(object))
+        {
+            typeIsAttr = baseCl == typeof(Attribute);
+            if (typeIsAttr)
+                break;
 
+            baseCl = baseCl.BaseType;
+        }
+
+        if (!typeIsAttr)
+            throw new ArgumentException("Type is not Attribute", nameof(attribute));
+
+        return AddAttribute(attribute.Name.Replace(nameof(Attribute), ""), attribute.Namespace, arguments);
+    }
+
+    public virtual BaseElementBuilder<TElementInfo> AddAttribute(string name, string @namespace = null, params string[] arguments)
+    {
         if (@namespace != null)
             throw new NotImplementedException("Do not add namespace here. Add it on class-level building or use full attribute name");
 
-        return this;
+        return AddAttribute(new AttributeInfo(name, arguments));
     }
 
     public BaseElementBuilder<TElementInfo> AddAttribute(AttributeInfo attributeInfo)

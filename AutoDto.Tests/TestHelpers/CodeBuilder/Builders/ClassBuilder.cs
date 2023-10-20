@@ -4,8 +4,10 @@ namespace AutoDto.Tests.TestHelpers.CodeBuilder.Builders;
 
 public class ClassBuilder : BaseElementBuilder<ClassElement>
 {
-    public ClassBuilder(string name) : base(name)
+    public ClassBuilder(string name) 
+        : base(name)
     {
+        AddUsing("System");
     }
 
     protected string Namespace { get; set; }
@@ -45,11 +47,16 @@ public class ClassBuilder : BaseElementBuilder<ClassElement>
         return this;
     }
 
-
     public ClassBuilder AddUsing(string @namespace)
     {
         Usings.Add(@namespace);
         return this;
+    }
+
+    public override BaseElementBuilder<ClassElement> AddAttribute(string name, string @namespace = null, params string[] arguments)
+    {
+        AddUsing(@namespace);
+        return base.AddAttribute(name, null, arguments);
     }
 }
 

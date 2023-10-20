@@ -1,6 +1,7 @@
 ﻿using AutoDto.Setup;
 using AutoDto.SourceGen;
 using AutoDto.Tests.TestHelpers;
+using AutoDto.Tests.TestHelpers.CodeBuilder.Elements;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -45,4 +46,16 @@ public abstract class BaseUnitTest
         return Generator.Run(code);
     } 
 
+
+    protected void RunWithAssert(IEnumerable<ClassElement> classes, Action<Compilation, ImmutableArray<Diagnostic>> assertCallback)
+    {
+        RunWithAssert(classes, null, assertCallback);
+    }
+
+    protected void RunWithAssert(IEnumerable<ClassElement> classes, IEnumerable<MetadataReference> extraRefs, Action<Compilation, ImmutableArray<Diagnostic>> assertCallback)
+    {
+        var res = Generator.Run(classes, extraRefs);
+
+        assertCallback(res.compilation, res.compileMsgs);
+    }
 }
