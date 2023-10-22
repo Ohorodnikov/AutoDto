@@ -47,6 +47,14 @@ public class ClassBuilder : BaseElementBuilder<ClassElement>
         return this;
     }
 
+    public ClassBuilder AddMembers(IEnumerable<Member> members)
+    {
+        foreach (var member in members)
+            AddMember(member);
+        
+        return this;
+    }
+
     public ClassBuilder AddUsing(string @namespace)
     {
         Usings.Add(@namespace);

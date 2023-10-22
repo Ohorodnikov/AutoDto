@@ -35,37 +35,37 @@ public abstract class BaseElementBuilder<TElementInfo>
         return new BaseDeclarationInfo(Visibility, IsStatic, IsPartial, InheritanceStatus, Name, Attributes);
     }
 
-    public BaseElementBuilder<TElementInfo> SetAccessor(Visibility visibility)
+    public virtual BaseElementBuilder<TElementInfo> SetAccessor(Visibility visibility)
     {
         Visibility = visibility;
         return this;
     }
 
-    public BaseElementBuilder<TElementInfo> SetPartial(bool isPartial = true)
+    public virtual BaseElementBuilder<TElementInfo> SetPartial(bool isPartial = true)
     {
         IsPartial = isPartial;
         return this;
     }
 
-    public BaseElementBuilder<TElementInfo> SetInheritance(InheritanceStatus inheritanceStatus)
+    public virtual BaseElementBuilder<TElementInfo> SetInheritance(InheritanceStatus inheritanceStatus)
     {
         InheritanceStatus = inheritanceStatus;
         return this;
     }
 
-    public BaseElementBuilder<TElementInfo> SetStatic(bool isStatic = true)
+    public virtual BaseElementBuilder<TElementInfo> SetStatic(bool isStatic = true)
     {
         IsStatic = isStatic;
         return this;
     }
 
-    public BaseElementBuilder<TElementInfo> SetName(string name)
+    public virtual BaseElementBuilder<TElementInfo> SetName(string name)
     {
         Name = name;
         return this;
     }
 
-    public BaseElementBuilder<TElementInfo> AddAttribute(Type attribute, params string[] arguments)
+    public virtual BaseElementBuilder<TElementInfo> AddAttribute(Type attribute, params string[] arguments)
     {
         var baseCl = attribute;
         var typeIsAttr = false;

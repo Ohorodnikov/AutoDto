@@ -140,7 +140,6 @@ public class DtoMainAttributeTests : BaseCompilerMessageTests
             Assert.Single(msgs);
 
             var expected = new MainDtoNotFoundError(BlNamespace + "." + relTypeName, 2);
-
             AssertMessage(DiagnosticSeverity.Error, expected.Id, msgs[0]);
         }
     }
@@ -191,7 +190,6 @@ public class DtoMainAttributeTests : BaseCompilerMessageTests
             Assert.Single(msgs);
 
             var expected = new MoreThanOneMainDtoFoundError(BlNamespace + "." + relTypeName, 2);
-
             AssertMessage(DiagnosticSeverity.Error, expected.Id, msgs[0]);
         }
     }

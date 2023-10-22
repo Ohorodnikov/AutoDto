@@ -4,6 +4,17 @@ namespace AutoDto.Tests.TestHelpers.CodeBuilder.Builders;
 
 public class PropertyBuilder : BaseMemberBuilder<PropertyMember>
 {
+    protected class AccessorInfo
+    {
+        public AccessorInfo(Visibility visibility, bool isExists)
+        {
+            Visibility = visibility;
+            IsExists = isExists;
+        }
+        public Visibility Visibility { get; set; }
+        public bool IsExists { get; set; }
+    }
+
     public PropertyBuilder(string name, Type returnType) 
         : this(name, returnType.Name) 
     { 
@@ -12,27 +23,46 @@ public class PropertyBuilder : BaseMemberBuilder<PropertyMember>
     public PropertyBuilder(string name, string returnType) 
         : base(name, returnType)
     {
-        Get = (Visibility, true);
-        Set = (Visibility, true);
+        Get = new(Visibility, true);
+        Set = new(Visibility, true);
     }
 
-    protected (Visibility visibitity, bool isExists) Get { get; set; }
-    protected (Visibility visibitity, bool isExists) Set { get; set; }
+    protected AccessorInfo Get { get; }
+    protected AccessorInfo Set { get; }
 
     protected override PropertyMember BuildImpl()
     {
-        return new PropertyMember(GetBaseDeclaration(), ReturnType, Get, Set);
+        return new PropertyMember(GetBaseDeclaration(), ReturnType, (Get.Visibility, Get.IsExists), (Set.Visibility, Set.IsExists));
     }
 
-    public PropertyBuilder DefineGet(bool isExists, Visibility visibility)
+    public override BaseElementBuilder<PropertyMember> SetAccessor(Visibility visibility)
     {
-        Get = (visibility, isExists);
+        Get.Visibility = visibility;
+        Set.Visibility = visibility;
+        return base.SetAccessor(visibility);
+    }
+
+    public PropertyBuilder DefineGet(bool isExists)
+    {
+        Get.IsExists = isExists;
         return this;
     }
 
-    public PropertyBuilder DefineSet(bool isExists, Visibility visibility)
+    public PropertyBuilder DefineGet(Visibility visibility)
     {
-        Set = (visibility, isExists);
+        Get.Visibility = visibility;
+        return this;
+    }
+
+    public PropertyBuilder DefineSet(bool isExists)
+    {
+        Set.IsExists = isExists;
+        return this;
+    }
+
+    public PropertyBuilder DefineSet(Visibility visibility)
+    {
+        Set.Visibility = visibility;
         return this;
     }
 

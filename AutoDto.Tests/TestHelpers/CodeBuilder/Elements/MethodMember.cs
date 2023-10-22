@@ -2,7 +2,9 @@
 
 public class MethodMember : Member
 {
-    public MethodMember(string fullCode) : base(fullCode) { }
+    public MethodMember(string fullCode) : base(fullCode) 
+    { 
+    }
 
     public MethodMember(BaseDeclarationInfo declarationInfo, string returnType, List<(string, string)> arguments, string body)
         : base(declarationInfo, returnType)

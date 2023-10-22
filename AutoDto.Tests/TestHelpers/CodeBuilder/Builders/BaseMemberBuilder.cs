@@ -3,7 +3,7 @@
 public abstract class BaseMemberBuilder<TMember> : BaseElementBuilder<TMember>
 {
     protected BaseMemberBuilder(string name, Type returnType) 
-        : this(name, returnType.Name)
+        : this(name, returnType == typeof(void) ? "void" : returnType.Name)
     {
     }
 
@@ -14,13 +14,12 @@ public abstract class BaseMemberBuilder<TMember> : BaseElementBuilder<TMember>
     }
 
     protected string ReturnType { get; set; }
-    public BaseMemberBuilder<TMember> SetReturnType(Type returnType)
+    public virtual BaseMemberBuilder<TMember> SetReturnType(Type returnType)
     {
-        ReturnType = returnType.Name;
-        return this;
+        return SetReturnType(returnType.Name);
     }
 
-    public BaseMemberBuilder<TMember> SetReturnType(string returnType)
+    public virtual BaseMemberBuilder<TMember> SetReturnType(string returnType)
     {
         ReturnType = returnType;
         return this;

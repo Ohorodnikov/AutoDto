@@ -66,7 +66,13 @@ public class SyntaxChecker
     {
         public PropertyDescriptor(PropertyInfo propertyInfo) 
             : this(new TypeDescriptor(propertyInfo.PropertyType), propertyInfo.Name)
-        { }
+        { 
+        }
+
+        public PropertyDescriptor(Type returnType, string name) 
+            : this (new TypeDescriptor(returnType), name) 
+        { 
+        }
 
         public PropertyDescriptor(TypeDescriptor type, string name)
         {
@@ -93,6 +99,18 @@ public class SyntaxChecker
             .SingleOrDefault(x => x.Identifier.Text == className);
 
         return @class;
+    }
+
+    public IEnumerable<ClassDeclarationSyntax> FindAllClassDeclarationsByName(Compilation compilation, string className)
+    {
+        var roots = compilation.SyntaxTrees.Select(x => x.GetRoot()).ToList();
+
+        var classes = roots
+            //.Skip(1)
+            .SelectMany(x => x.DescendantNodesAndSelf().OfType<ClassDeclarationSyntax>())
+            .Where(x => x.Identifier.Text == className);
+
+        return classes;
     }
 
     public void AssertOnePropSyntax(PropertyDeclarationSyntax property)

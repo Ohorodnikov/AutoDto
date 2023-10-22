@@ -7,7 +7,8 @@ public enum Visibility
 {
     Public,
     Protected,
-    Private
+    Private,
+    Internal
 }
 
 
