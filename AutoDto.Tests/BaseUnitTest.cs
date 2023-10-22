@@ -1,16 +1,8 @@
-﻿using AutoDto.Setup;
-using AutoDto.SourceGen;
+﻿using AutoDto.SourceGen;
 using AutoDto.Tests.TestHelpers;
 using AutoDto.Tests.TestHelpers.CodeBuilder.Elements;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Collections.Immutable;
-using System.Diagnostics;
-using System.Reflection;
-using System.Text;
-using Xunit.Abstractions;
-using Xunit.Sdk;
 using static AutoDto.Tests.TestHelpers.DtoCodeCreator;
 
 namespace AutoDto.Tests;
@@ -24,7 +16,15 @@ public abstract class BaseUnitTest
         Generator = new GeneratorRunner();
 
         LogHelper.InitDebugLogger();
+
+        var currentTestNamespace = GetType().Namespace;
+
+        DtoNamespace = $"{currentTestNamespace}.Models.Dtos";
+        BlNamespace = $"{currentTestNamespace}.Models.Bls";
     }
+
+    protected string DtoNamespace { get; }
+    protected string BlNamespace { get; }
 
     protected SyntaxChecker SyntaxChecker { get; }
     protected DtoCodeCreator DtoCreator { get; }
@@ -44,7 +44,7 @@ public abstract class BaseUnitTest
         var code = DtoCreator.GetDtosDefinition(dtos);
 
         return Generator.Run(code);
-    } 
+    }
 
 
     protected void RunWithAssert(IEnumerable<ClassElement> classes, Action<Compilation, ImmutableArray<Diagnostic>> assertCallback)

@@ -1,17 +1,10 @@
-﻿using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using AutoDto.Setup;
 using AutoDto.SourceGen;
-using AutoDto.Setup;
-using System.Diagnostics;
 using AutoDto.Tests.TestHelpers;
-using AutoDto.Tests.TestHelpers.CodeBuilder.Elements;
 using AutoDto.Tests.TestHelpers.CodeBuilder.Builders;
+using AutoDto.Tests.TestHelpers.CodeBuilder.Elements;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace AutoDto.Tests.SourceGeneration;
 
@@ -69,7 +62,7 @@ public class LoadTestFixture : IDisposable
 
     public void Dispose()
     {
-        
+
     }
 
     private List<ClassElement> CreateDtoModels(List<ClassElement> blTypes)
