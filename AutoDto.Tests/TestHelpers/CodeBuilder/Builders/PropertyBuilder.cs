@@ -39,7 +39,8 @@ public class PropertyBuilder : BaseMemberBuilder<PropertyMember>
     {
         Get.Visibility = visibility;
         Set.Visibility = visibility;
-        return base.SetAccessor(visibility);
+        base.SetAccessor(visibility);
+        return this;
     }
 
     public PropertyBuilder DefineGet(bool isExists)

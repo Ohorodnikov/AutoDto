@@ -12,6 +12,12 @@ public class DtoClassBuilder : ClassBuilder
         //DtoFor
     }
 
+    public DtoClassBuilder(string name, DtoAttributeType dtoAttributeType, ClassElement blType)
+        : this (name, dtoAttributeType, blType.Name, blType.Namespace)
+    {
+
+    }
+
     public DtoClassBuilder(string name, DtoAttributeType dtoAttributeType, Type blType)
         : this(name, dtoAttributeType, blType.Name, blType.Namespace)
     {

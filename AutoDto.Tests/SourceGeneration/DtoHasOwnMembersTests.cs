@@ -1,231 +1,285 @@
 ﻿using AutoDto.SourceGen.DiagnosticMessages.Errors;
 using AutoDto.SourceGen.DiagnosticMessages.Warnings;
-using AutoDto.Tests.SourceGeneration.Models.HierarchyTestModels;
+using AutoDto.Tests.TestHelpers.CodeBuilder.Builders;
+using AutoDto.Tests.TestHelpers.CodeBuilder.Elements;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Reflection;
 using static AutoDto.Tests.TestHelpers.SyntaxChecker;
 
 namespace AutoDto.Tests.SourceGeneration;
 
 public class DtoHasOwnMembersTests : BaseUnitTest
 {
-    private static string _dtoName = "MyDto";
-    private static Type _blType = typeof(BlType);
-    private record MemberDescriptor(Accessibility Accessibility, Type Type, string Name, SymbolKind Kind, bool IsStatic = false);
-
-    private string GetKindDefinition(SymbolKind kind)
+    private IEnumerable<PropertyDescriptor> Member2PropDescriptor(IEnumerable<Member> members)
     {
-        return kind switch
-        {
-            SymbolKind.Property => "{ get; set; }",
-            SymbolKind.Field => ";",
-            SymbolKind.Method => "(){}",
-            _ => throw new NotImplementedException()
-        };
-    }
+        return
+        members
+            .Select(x =>
+            {
+                return x.ReturnType.ToLower() switch
+                {
+                    "string" => new PropertyDescriptor(typeof(string), x.Name),
+                    "int32" => new PropertyDescriptor(typeof(int), x.Name),
+                    _ => throw new NotImplementedException()
+                };
 
-    private string GetDtoCode(Type blType, IEnumerable<MemberDescriptor> members)
-    {
-        var attr = DtoCreator.GetDtoFromAttr(blType);
-        var dtoDef = DtoCreator.GetPublicDtoDef(_dtoName);
-
-        var code = $@"
-using {attr.nameSpace};
-using {blType.Namespace};
-
-namespace AutoDto.Tests.SourceGeneration.Dto;
-
-{attr.definition}
-{dtoDef}
-{{
-";
-        foreach (var member in members)
-        {
-            var access = SyntaxFacts.GetText(member.Accessibility);
-            var isStatic = member.IsStatic ? "static" : "";
-            var type = member.Type == typeof(void) ? "void" :  member.Type.FullName;
-            var kindDef = GetKindDefinition(member.Kind);
-
-            code += Environment.NewLine + $"{access} {isStatic} {type} {member.Name} {kindDef}";
-        }
-
-        code += Environment.NewLine +  "}";
-
-        return code;
-    }
-
-    private Compilation RunTest(IEnumerable<MemberDescriptor> members, Action<ImmutableArray<Diagnostic>> testDiagnosticMsgsAction)
-    {
-        var code = GetDtoCode(_blType, members);
-        var (compilation, msgs) = Generator.RunWithMsgs(code);
-
-        testDiagnosticMsgsAction(msgs);
-
-        return compilation;
+            });
     }
 
     [Fact]
     public void HasMembersWithoutConflictNames()
     {
-        var compilation = RunTest(new MemberDescriptor[0], (msgs) => Assert.Empty(msgs));
+        var blMembers = new Member[]
+        {
+            CommonProperties.Id_Int,
+            new PropertyBuilder("Name1", typeof(string)).Build(),
+            new PropertyBuilder("Name2", typeof(string)).Build(),
+            new PropertyBuilder("Name3", typeof(string)).Build(),
+            new PropertyBuilder("Name4", typeof(string)).Build(),
+        };
 
-        var generated = SyntaxChecker.FindClassByName(compilation, _dtoName);
+        var blClass =
+            new ClassBuilder("BlType")
+            .SetNamespace(BlNamespace)
+            .AddMembers(blMembers)
+            .Build();
 
-        Assert.NotNull(generated);
+        var dtoClass =
+            new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetNamespace(DtoNamespace)
+            .AddMember(new PropertyBuilder("Name0", typeof(string)).Build())
+            .Build()
+            ;
 
-        var expected = _blType.GetProperties()
-            .Select(x => new PropertyDescriptor(x))
-            .ToList();
+        RunWithAssert(new[] { blClass, dtoClass }, DoAssert);
 
-        SyntaxChecker.TestOneClassDeclaration(generated, expected);
+        void DoAssert(Compilation compilation, ImmutableArray<Diagnostic> msgs)
+        {
+            Assert.Empty(msgs);
+
+            var generatedClass = SyntaxChecker.FindAllClassDeclarationsByName(compilation, dtoClass.Name)
+                    .Skip(1) //skip declaration to get only generated
+                    .Single();
+
+            SyntaxChecker.TestOneClassDeclaration(generatedClass, Member2PropDescriptor(blMembers));
+        }
     }
 
     [Fact]
-    public void DtoHasInternalyReservedName()
+    public void DtoHasInternallyReservedName()
     {
-        var specialNameMember = _blType.GetMembers()
-            .OfType<MethodInfo>()
-            .Where(x => x.Attributes.HasFlag(MethodAttributes.SpecialName))
-            .First();
-
-        var members = new[]
+        var blMembers = new Member[]
         {
-            new MemberDescriptor(Accessibility.Public, specialNameMember.ReturnType, specialNameMember.Name, SymbolKind.Field),
+            CommonProperties.Id_Int,
+            new PropertyBuilder("Name1", typeof(string)).Build(),
+            new PropertyBuilder("Name2", typeof(string)).Build(),
+            new PropertyBuilder("Name3", typeof(string)).Build(),
+            new PropertyBuilder("Name4", typeof(string)).Build(),
         };
 
-        void TestDiagnostic(ImmutableArray<Diagnostic> msgs)
+        var blClass =
+            new ClassBuilder("BlType")
+            .SetNamespace(BlNamespace)
+            .AddMembers(blMembers)
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetNamespace(DtoNamespace)
+            .AddMember(new FieldBuilder("get_Id", typeof(int)).Build())
+            .Build()
+            ;
+
+        RunWithAssert(new[] { blClass, dtoClass }, DoAssert);
+
+        void DoAssert(Compilation compilation, ImmutableArray<Diagnostic> msgs)
         {
             Assert.Single(msgs);
 
             var msg = msgs[0];
-            var expId = new ReservedMemberConflicError("", _dtoName).Id;
+            var expId = new ReservedMemberConflicError("", dtoClass.Name).Id;
             Assert.Equal(DiagnosticSeverity.Error, msg.Severity);
             Assert.Equal(expId, msg.Id);
         }
-
-        RunTest(members, TestDiagnostic);
     }
 
-    private void TestHasProperties(Accessibility accessibility, params string[] propNames)
+    [Theory]
+    [InlineData(Visibility.Public, "SomeName1")]
+    [InlineData(Visibility.Protected, "SomeName1")]
+    [InlineData(Visibility.Private, "SomeName1")]
+
+    [InlineData(Visibility.Public, "SomeName1", "SomeName2")]
+    [InlineData(Visibility.Protected, "SomeName1", "SomeName2")]
+    [InlineData(Visibility.Private, "SomeName1", "SomeName2")]
+    public void HasPropsAsInBlTest(Visibility visibility, params string[] commonPropNames)
     {
-        var members = propNames.Select(x => new MemberDescriptor(accessibility, typeof(string), x, SymbolKind.Property)).ToList();
-
-        void TestDiagnostic(ImmutableArray<Diagnostic> msgs)
+        var blMembers = new List<Member>
         {
-            Assert.Equal(members.Count, msgs.Length);
+            CommonProperties.Id_Int,
+            new PropertyBuilder("Name1", typeof(string)).Build(),
+            new PropertyBuilder("Name2", typeof(string)).Build(),
+            new PropertyBuilder("Name3", typeof(string)).Build(),
+            new PropertyBuilder("Name4", typeof(string)).Build(),
+        };
 
-            var expWrn = new PropertyConflictWarning("", _dtoName);
+        var dtoMembers = new List<Member>();
+
+        foreach (var commonName in commonPropNames)
+        {
+            blMembers.Add(new PropertyBuilder(commonName, typeof(string)).SetAccessor(Visibility.Public).Build());
+            dtoMembers.Add(new PropertyBuilder(commonName, typeof(string)).SetAccessor(visibility).Build());
+        }
+
+        var blClass =
+            new ClassBuilder("BlType")
+            .SetNamespace(BlNamespace)
+            .AddMembers(blMembers)
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetNamespace(DtoNamespace)
+            .AddMembers(dtoMembers)
+            .Build();
+
+        RunWithAssert(new[] { blClass, dtoClass }, DoAssert);
+
+        void DoAssert(Compilation compilation, ImmutableArray<Diagnostic> msgs)
+        {
+            Assert.Equal(commonPropNames.Length, msgs.Length);
+
+            var expWrn = new PropertyConflictWarning("", dtoClass.Name);
 
             foreach (var msg in msgs)
             {
                 Assert.Equal(DiagnosticSeverity.Warning, msg.Severity);
                 Assert.Equal(expWrn.Id, msg.Id);
             }
+
+            var generatedClass = SyntaxChecker.FindAllClassDeclarationsByName(compilation, dtoClass.Name)
+                    .Skip(1) //skip declaration to get only generated
+                    .Single();
+
+            var expectedGeneratedDtoProps = Member2PropDescriptor(blMembers.Where(x => !commonPropNames.Contains(x.Name))).ToList();
+
+            SyntaxChecker.TestOneClassDeclaration(generatedClass, expectedGeneratedDtoProps);
         }
-
-        var compilation = RunTest(members, TestDiagnostic);
-
-        var generated = SyntaxChecker.FindClassByName(compilation, _dtoName);
-
-        Assert.NotNull(generated);
-
-        var expected = _blType.GetProperties()
-            .Where(x => !propNames.Contains(x.Name))
-            .Select(x => new PropertyDescriptor(x))
-            .ToList();
-
-        SyntaxChecker.TestOneClassDeclaration(generated, expected);
     }
-
-    [Theory]
-    [InlineData(Accessibility.Public)]
-    [InlineData(Accessibility.Protected)]
-    [InlineData(Accessibility.Private)]
-    public void HasOnePropertyTest(Accessibility accessibility) 
-        => TestHasProperties(accessibility, nameof(BlType.Name1));
-
-    [Theory]
-    [InlineData(Accessibility.Public)]
-    [InlineData(Accessibility.Protected)]
-    [InlineData(Accessibility.Private)]
-    public void HasOneManyPropertiseTest(Accessibility accessibility) 
-        => TestHasProperties(accessibility, nameof(BlType.Name1), nameof(BlType.Name2));
 
     [Fact]
     public void BlHasPropAsDtoNameTest()
     {
-        var blType = typeof(BlTypeWithPropAsDtoCtor);
+        var dtoName = "MyDto";
 
-        var code = GetDtoCode(blType, new MemberDescriptor[0]);
-        var (compilation, msgs) = Generator.RunWithMsgs(code);
-
-        Assert.Single(msgs);
-        var msg = msgs[0];
-
-        Assert.Equal(DiagnosticSeverity.Error, msg.Severity);
-
-        var exp = new MemberConflictError("", _dtoName);
-
-        Assert.Equal(exp.Id, msg.Id);
-    }
-
-    private void TestWithMembers(Accessibility accessibility, SymbolKind kind, bool isStatic, params string[] memberNames)
-    {
-        var retType = kind == SymbolKind.Method ? typeof(void) : typeof(string);
-
-        var members = memberNames.Select(x => new MemberDescriptor(accessibility, retType, x, kind, isStatic)).ToList();
-
-        void TestDiagnostic(ImmutableArray<Diagnostic> msgs)
+        var blMembers = new List<Member>
         {
-            Assert.Equal(members.Count, msgs.Length);
+            CommonProperties.Id_Int,
+            new PropertyBuilder(dtoName, typeof(string)).Build(),
+        };
 
-            var expWrn = new MemberConflictError("", _dtoName);
+        var blClass =
+            new ClassBuilder("BlType")
+            .SetNamespace(BlNamespace)
+            .AddMembers(blMembers)
+            .Build();
 
-            foreach (var msg in msgs)
-            {
-                Assert.Equal(DiagnosticSeverity.Error, msg.Severity);
-                Assert.Equal(expWrn.Id, msg.Id);
-            }
+        var dtoClass =
+            new DtoClassBuilder(dtoName, DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetNamespace(DtoNamespace)
+            .Build();
+
+        RunWithAssert(new[] { blClass, dtoClass }, DoAssert);
+
+        void DoAssert(Compilation compilation, ImmutableArray<Diagnostic> msgs)
+        {
+            Assert.Single(msgs);
+            var msg = msgs[0];
+
+            var exp = new MemberConflictError("", dtoClass.Name);
+            Assert.Equal(DiagnosticSeverity.Error, msg.Severity);
+            Assert.Equal(exp.Id, msg.Id);
         }
+    }
 
-        var compilation = RunTest(members, TestDiagnostic);
+    private void DtoHasMemberAsBlPropNameTest<TMember>(BaseMemberBuilder<TMember> dtoMemberBuilder, Visibility visibility, bool isStatic)
+        where TMember : Member
+    {
+        var dtoMember = dtoMemberBuilder
+            .SetAccessor(visibility)
+            .SetStatic(isStatic)
+            .Build();
 
-        Assert.Single(compilation.SyntaxTrees);
+        var blMembers = new List<Member>
+        {
+            CommonProperties.Id_Int,
+            new PropertyBuilder("Name1", typeof(string)).Build(),
+            new PropertyBuilder("Name2", typeof(string)).Build(),
+            new PropertyBuilder("Name3", typeof(string)).Build(),
+            new PropertyBuilder("Name4", typeof(string)).Build(),
+
+            new PropertyBuilder(dtoMember.Name, dtoMember.ReturnType).Build(),
+        };
+
+        var blClass =
+            new ClassBuilder("BlType")
+            .SetNamespace(BlNamespace)
+            .AddMembers(blMembers)
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetNamespace(DtoNamespace)
+            .AddMember(dtoMember)
+            .Build();
+
+        RunWithAssert(new[] { blClass, dtoClass }, DoAssert);
+
+        void DoAssert(Compilation compilation, ImmutableArray<Diagnostic> msgs)
+        {
+            Assert.Single(msgs);
+
+            var msg = msgs[0];
+            var expId = new MemberConflictError("", dtoClass.Name).Id;
+            Assert.Equal(DiagnosticSeverity.Error, msg.Severity);
+            Assert.Equal(expId, msg.Id);
+        }
     }
 
     [Theory]
+    [InlineData(Visibility.Public, false)]
+    [InlineData(Visibility.Protected, false)]
+    [InlineData(Visibility.Private, false)]
 
-    [InlineData(Accessibility.Public, SymbolKind.Method)]
-    [InlineData(Accessibility.Protected, SymbolKind.Method)]
-    [InlineData(Accessibility.Private, SymbolKind.Method)]
-
-    [InlineData(Accessibility.Public, SymbolKind.Field)]
-    [InlineData(Accessibility.Protected, SymbolKind.Field)]
-    [InlineData(Accessibility.Private, SymbolKind.Field)]
-    public void HasMemberTest(Accessibility accessibility, SymbolKind kind)
+    [InlineData(Visibility.Public, true)]
+    [InlineData(Visibility.Protected, true)]
+    [InlineData(Visibility.Private, true)]
+    public void DtoHasMethodAsBlPropNameTest(Visibility visibility, bool isStatic)
     {
-        TestWithMembers(accessibility, kind, false, nameof(BlType.Name1));
-    }  
+        var mb = new MethodBuilder("SomeName1", typeof(string)).SetBody("return null;");
+        DtoHasMemberAsBlPropNameTest(mb, visibility, isStatic);
+    }
 
     [Theory]
+    [InlineData(Visibility.Public, false)]
+    [InlineData(Visibility.Protected, false)]
+    [InlineData(Visibility.Private, false)]
 
-    [InlineData(Accessibility.Public, SymbolKind.Property)]
-    [InlineData(Accessibility.Protected, SymbolKind.Property)]
-    [InlineData(Accessibility.Private, SymbolKind.Property)]
-
-    [InlineData(Accessibility.Public, SymbolKind.Method)]
-    [InlineData(Accessibility.Protected, SymbolKind.Method)]
-    [InlineData(Accessibility.Private, SymbolKind.Method)]
-
-    [InlineData(Accessibility.Public, SymbolKind.Field)]
-    [InlineData(Accessibility.Protected, SymbolKind.Field)]
-    [InlineData(Accessibility.Private, SymbolKind.Field)]
-    public void HasStaticMembersTest(Accessibility accessibility, SymbolKind kind)
+    [InlineData(Visibility.Public, true)]
+    [InlineData(Visibility.Protected, true)]
+    [InlineData(Visibility.Private, true)]
+    public void DtoHasFieldAsBlPropNameTest(Visibility visibility, bool isStatic)
     {
-        TestWithMembers(accessibility, kind, true, nameof(BlType.Name1));
+        var fb = new FieldBuilder("SomeName1", typeof(string));
+        DtoHasMemberAsBlPropNameTest(fb, visibility, isStatic);
     }
-} 
+
+    [Theory]
+    [InlineData(Visibility.Public)]
+    [InlineData(Visibility.Protected)]
+    [InlineData(Visibility.Private)]
+    public void DtoHasStaticPropAsBlPropNameTest(Visibility visibility)
+    {
+        var pb = new PropertyBuilder("SomeName1", typeof(string));
+        DtoHasMemberAsBlPropNameTest(pb, visibility, true);
+    }
+}

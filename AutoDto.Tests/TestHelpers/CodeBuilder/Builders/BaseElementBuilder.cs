@@ -3,6 +3,7 @@
 namespace AutoDto.Tests.TestHelpers.CodeBuilder.Builders;
 
 public abstract class BaseElementBuilder<TElementInfo>
+    where TElementInfo : CodeElement
 {
     public BaseElementBuilder(string name)
     {

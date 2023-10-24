@@ -1,6 +1,9 @@
-﻿namespace AutoDto.Tests.TestHelpers.CodeBuilder.Builders;
+﻿using AutoDto.Tests.TestHelpers.CodeBuilder.Elements;
+
+namespace AutoDto.Tests.TestHelpers.CodeBuilder.Builders;
 
 public abstract class BaseMemberBuilder<TMember> : BaseElementBuilder<TMember>
+    where TMember : Member
 {
     protected BaseMemberBuilder(string name, Type returnType) 
         : this(name, returnType == typeof(void) ? "void" : returnType.Name)

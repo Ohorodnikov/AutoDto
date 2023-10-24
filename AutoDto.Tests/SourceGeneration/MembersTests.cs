@@ -13,23 +13,7 @@ namespace AutoDto.Tests.SourceGeneration;
 
 public class BaseMemberTests : BaseUnitTest
 {
-    protected void TestGeneratedMembersForType<T>()
-    {
-        var dto = new DtoData(typeof(T), Setup.RelationStrategy.None, "MemberTestsDto");
-
-        var compilation = RunForDtos(dto);
-        var generatedClass = SyntaxChecker.FindClassByName(compilation, dto.DtoName);
-
-        var props = typeof(T)
-                            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                            .Where(x => x.CanRead)
-                            .Where(x => x.GetMethod.IsPublic)
-                            .ToArray();
-
-        SyntaxChecker.TestOneClassDeclaration(generatedClass, props.Select(x => new PropertyDescriptor(x)));
-    }
-
-    protected void TestGeneratedMembersFor(Member[] blMembers, IEnumerable<PropertyDescriptor> expectedDtoProperties)
+    protected void GenerateBlAndAssertDtoMembers(Member[] blMembers, IEnumerable<PropertyDescriptor> expectedDtoProperties)
     {
         var blClass = new ClassBuilder("MemberTestBl")
             .SetNamespace(BlNamespace)
@@ -75,7 +59,7 @@ public class BlInstanceMemberTests : BaseMemberTests
             new PropertyDescriptor(typeof(string), "Name")
         };
 
-        TestGeneratedMembersFor(blMembers, expectedDtoMembers);
+        GenerateBlAndAssertDtoMembers(blMembers, expectedDtoMembers);
     }
 
     [Fact]
@@ -98,7 +82,7 @@ public class BlInstanceMemberTests : BaseMemberTests
             new PropertyDescriptor(typeof(string), "Name")
         };
 
-        TestGeneratedMembersFor(blMembers, expectedDtoMembers);
+        GenerateBlAndAssertDtoMembers(blMembers, expectedDtoMembers);
     }
 
     [Fact]
@@ -121,7 +105,7 @@ public class BlInstanceMemberTests : BaseMemberTests
             new PropertyDescriptor(typeof(string), "Name")
         };
 
-        TestGeneratedMembersFor(blMembers, expectedDtoMembers);
+        GenerateBlAndAssertDtoMembers(blMembers, expectedDtoMembers);
     }
 
     [Fact]
@@ -141,7 +125,7 @@ public class BlInstanceMemberTests : BaseMemberTests
             new PropertyDescriptor(typeof(string), "ReadOnlyProp")
         };
 
-        TestGeneratedMembersFor(blMembers, expectedDtoMembers);
+        GenerateBlAndAssertDtoMembers(blMembers, expectedDtoMembers);
     }
 
     [Fact]
@@ -161,7 +145,7 @@ public class BlInstanceMemberTests : BaseMemberTests
             new PropertyDescriptor(typeof(string), "Name")
         };
 
-        TestGeneratedMembersFor(blMembers, expectedDtoMembers);
+        GenerateBlAndAssertDtoMembers(blMembers, expectedDtoMembers);
     }
 }
 
@@ -187,7 +171,7 @@ public class BlStaticMemberTests : BaseMemberTests
             new PropertyDescriptor(typeof(string), "Name")
         };
 
-        TestGeneratedMembersFor(blMembers, expectedDtoMembers);
+        GenerateBlAndAssertDtoMembers(blMembers, expectedDtoMembers);
     }
 
     [Fact]
@@ -210,7 +194,7 @@ public class BlStaticMemberTests : BaseMemberTests
             new PropertyDescriptor(typeof(string), "Name")
         };
 
-        TestGeneratedMembersFor(blMembers, expectedDtoMembers);
+        GenerateBlAndAssertDtoMembers(blMembers, expectedDtoMembers);
     }
 
     [Fact]
@@ -233,7 +217,7 @@ public class BlStaticMemberTests : BaseMemberTests
             new PropertyDescriptor(typeof(string), "Name")
         };
 
-        TestGeneratedMembersFor(blMembers, expectedDtoMembers);
+        GenerateBlAndAssertDtoMembers(blMembers, expectedDtoMembers);
     }
 
     [Fact]
@@ -256,6 +240,6 @@ public class BlStaticMemberTests : BaseMemberTests
             new PropertyDescriptor(typeof(string), "Name")
         };
 
-        TestGeneratedMembersFor(blMembers, expectedDtoMembers);
+        GenerateBlAndAssertDtoMembers(blMembers, expectedDtoMembers);
     }
 }

@@ -64,7 +64,8 @@ public class ClassBuilder : BaseElementBuilder<ClassElement>
     public override BaseElementBuilder<ClassElement> AddAttribute(string name, string @namespace = null, params string[] arguments)
     {
         AddUsing(@namespace);
-        return base.AddAttribute(name, null, arguments);
+        base.AddAttribute(name, null, arguments);
+        return this;
     }
 }
 
