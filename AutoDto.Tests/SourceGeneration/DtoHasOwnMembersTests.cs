@@ -10,22 +10,6 @@ namespace AutoDto.Tests.SourceGeneration;
 
 public class DtoHasOwnMembersTests : BaseUnitTest
 {
-    private IEnumerable<PropertyDescriptor> Member2PropDescriptor(IEnumerable<Member> members)
-    {
-        return
-        members
-            .Select(x =>
-            {
-                return x.ReturnType.ToLower() switch
-                {
-                    "string" => new PropertyDescriptor(typeof(string), x.Name),
-                    "int32" => new PropertyDescriptor(typeof(int), x.Name),
-                    _ => throw new NotImplementedException()
-                };
-
-            });
-    }
-
     [Fact]
     public void HasMembersWithoutConflictNames()
     {
@@ -48,8 +32,7 @@ public class DtoHasOwnMembersTests : BaseUnitTest
             new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
             .SetNamespace(DtoNamespace)
             .AddMember(new PropertyBuilder("Name0", typeof(string)).Build())
-            .Build()
-            ;
+            .Build();
 
         RunWithAssert(new[] { blClass, dtoClass }, DoAssert);
 

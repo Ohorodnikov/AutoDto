@@ -1,259 +1,628 @@
 ﻿using AutoDto.SourceGen.DiagnosticMessages.Errors;
 using AutoDto.SourceGen.DiagnosticMessages.Warnings;
 using AutoDto.Tests.SourceGeneration.Models.HierarchyTestModels;
+using AutoDto.Tests.TestHelpers.CodeBuilder.Builders;
+using AutoDto.Tests.TestHelpers.CodeBuilder.Elements;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Collections.Immutable;
-using System.Reflection;
-using static AutoDto.Tests.TestHelpers.SyntaxChecker;
 
 namespace AutoDto.Tests.SourceGeneration;
 
 public class DtoWithHierarchyTests : BaseUnitTest
 {
-    Type _blType = typeof(BlType);
-    string _dtoName = "MyDto";
-    Action<ImmutableArray<Diagnostic>> _noDiagnosticMsgs = (msgs) => Assert.Empty(msgs);
-
-    private string GetDtoCode(Type blType, Type baseDtoType)
-    {
-        var attr = DtoCreator.GetDtoFromAttr(blType);
-        var dtoDef = DtoCreator.GetPublicDtoDef(_dtoName);
-
-        var code = $@"
-
-using {attr.nameSpace};
-using {_blType.Namespace};
-using {baseDtoType.Namespace};
-
-namespace AutoDto.Tests.SourceGeneration.Dto;
-
-{attr.definition}
-{dtoDef} : {DtoCreator.GetTypeName(baseDtoType)}
-{{
-
-}}
-";
-
-        return code;
-    }
-
-    private Compilation RunAndCheckDiagnostic(Type blType, Type baseDtoType, Action<ImmutableArray<Diagnostic>> testDiagnosticMsgsAction)
-    {
-        var code = GetDtoCode(blType, baseDtoType);
-
-        var (compilation, msgs) = Generator.RunWithMsgs(code);
-
-        testDiagnosticMsgsAction(msgs);
-
-        return compilation;
-    }
-
-    private void DoTest_Success(
-        Type baseDtoType,
-        IEnumerable<PropertyInfo> expectedProps,
-        Action<ImmutableArray<Diagnostic>> testDiagnosticMsgsAction = null,
-        Type blType = null)
-    {
-        var compilation = RunAndCheckDiagnostic(
-            blType ?? _blType,
-            baseDtoType,
-            testDiagnosticMsgsAction ?? _noDiagnosticMsgs
-            );
-
-        Assert.Equal(2, compilation.SyntaxTrees.Count());
-
-        var generatedClass = SyntaxChecker.FindClassByName(compilation, _dtoName);
-
-        var expected = expectedProps.Select(x => new PropertyDescriptor(x));
-
-        SyntaxChecker.TestOneClassDeclaration(generatedClass, expected);
-    }
-
-    private void DoTest_Error(
-        Type baseDtoType,
-        Action<ImmutableArray<Diagnostic>> testDiagnosticMsgsAction,
-        Type blType = null)
-    {
-        var compilation = RunAndCheckDiagnostic(
-            blType ?? _blType,
-            baseDtoType,
-            testDiagnosticMsgsAction
-            );
-
-        Assert.Single(compilation.SyntaxTrees);
-    }
-
     [Fact]
     public void DtoHasEmptyParent()
     {
-        DoTest_Success(typeof(BaseEmptyDto), _blType.GetProperties());
+        var baseDtoNamespace = DtoNamespace + ".Base";
+        var blMembers = new List<Member>
+        {
+            CommonProperties.Id_Int,
+            new PropertyBuilder("Name1", typeof(string)).Build(),
+            new PropertyBuilder("Name2", typeof(string)).Build(),
+            new PropertyBuilder("Name3", typeof(string)).Build(),
+            new PropertyBuilder("Name4", typeof(string)).Build(),
+        };
+
+        var blClass =
+            new ClassBuilder("BlType")
+            .SetNamespace(BlNamespace)
+            .AddMembers(blMembers)
+            .Build();
+
+        var baseDtoClass =
+            new ClassBuilder("BaseEmptyDto")
+            .SetNamespace(baseDtoNamespace)
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("DtoName", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetNamespace(DtoNamespace)
+            .AddBase(baseDtoClass)
+            .Build();
+
+        RunWithAssert(new[] { blClass, baseDtoClass, dtoClass }, DoAssert);
+
+        void DoAssert(Compilation compilation, ImmutableArray<Diagnostic> msgs)
+        {
+            Assert.Empty(msgs);
+
+            var generatedClass = SyntaxChecker.FindAllClassDeclarationsByName(compilation, dtoClass.Name)
+                    .Skip(1) //skip declaration to get only generated
+                    .Single();
+
+            SyntaxChecker.TestOneClassDeclaration(generatedClass, Member2PropDescriptor(blMembers));
+        }
     }
 
     [Fact]
-    public void DtoHasParentWithProps_WithoutConflictBlNamsesTest()
+    public void DtoHasParentWithProps_WithoutConflictBlNamesTest()
     {
-        DoTest_Success(typeof(BaseDtoWithoutConflictProps), _blType.GetProperties());
+        var baseDtoNamespace = DtoNamespace + ".Base";
+        var blMembers = new List<Member>
+        {
+            CommonProperties.Id_Int,
+            new PropertyBuilder("Name1", typeof(string)).Build(),
+            new PropertyBuilder("Name2", typeof(string)).Build(),
+            new PropertyBuilder("Name3", typeof(string)).Build(),
+            new PropertyBuilder("Name4", typeof(string)).Build(),
+        };
+
+        var blClass =
+            new ClassBuilder("BlType")
+            .SetNamespace(BlNamespace)
+            .AddMembers(blMembers)
+            .Build();
+
+        var baseDtoClass1 =
+            new ClassBuilder("BaseEmptyDto")
+            .SetNamespace(baseDtoNamespace)
+            .Build();
+
+        var baseDtoClass2 =
+            new ClassBuilder("BaseDtoWithoutConflictProps")
+            .SetNamespace(baseDtoNamespace)
+            .AddBase(baseDtoClass1)
+            .AddMember(new PropertyBuilder("SomeNotConflictProp", typeof(string)).Build())
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("DtoName", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetNamespace(DtoNamespace)
+            .AddBase(baseDtoClass2)
+            .Build();
+
+        RunWithAssert(new[] { blClass, baseDtoClass1, baseDtoClass2, dtoClass }, DoAssert);
+
+        void DoAssert(Compilation compilation, ImmutableArray<Diagnostic> msgs)
+        {
+            Assert.Empty(msgs);
+
+            var generatedClass = SyntaxChecker.FindAllClassDeclarationsByName(compilation, dtoClass.Name)
+                    .Skip(1) //skip declaration to get only generated
+                    .Single();
+
+            SyntaxChecker.TestOneClassDeclaration(generatedClass, Member2PropDescriptor(blMembers));
+        }
     }
 
     [Fact]
-    public void DtoHasParentWithProps_WithConflictBlNamses_Warning_Test()
+    public void DtoHasParentWithProps_WithConflictBlNames_Warning_Test()
     {
-        var expectedProps = _blType.GetProperties()
-                                   .Where(x => x.Name != nameof(BaseDtoWithConflictPropName.Name1));
+        var baseDtoNamespace = DtoNamespace + ".Base";
+        var conflictPropName = "ConflictProp";
+        var notConflictedMembers = new List<Member>
+        {
+            CommonProperties.Id_Int,
+            new PropertyBuilder("Name1", typeof(string)).Build(),
+            new PropertyBuilder("Name2", typeof(string)).Build(),
+            new PropertyBuilder("Name3", typeof(string)).Build(),
+            new PropertyBuilder("Name4", typeof(string)).Build(),
+        };
 
-        void TestDiagnostic(ImmutableArray<Diagnostic> msgs)
+        var blClass =
+            new ClassBuilder("BlType")
+            .SetNamespace(BlNamespace)
+            .AddMembers(notConflictedMembers)
+            .AddMember(new PropertyBuilder(conflictPropName, typeof(string)).Build())
+            .Build();
+
+        var baseDtoClass1 =
+            new ClassBuilder("BaseEmptyDto")
+            .SetNamespace(baseDtoNamespace)
+            .Build();
+
+        var baseDtoClass2 =
+            new ClassBuilder("BaseDtoWithConflictPropName")
+            .SetNamespace(baseDtoNamespace)
+            .AddBase(baseDtoClass1)
+            .AddMember(new PropertyBuilder(conflictPropName, typeof(string)).Build())
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("DtoName", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetNamespace(DtoNamespace)
+            .AddBase(baseDtoClass2)
+            .Build();
+
+        RunWithAssert(new[] { blClass, baseDtoClass1, baseDtoClass2, dtoClass }, DoAssert);
+
+        void DoAssert(Compilation compilation, ImmutableArray<Diagnostic> msgs)
         {
             Assert.Single(msgs);
             var msg = msgs[0];
 
-            var expMsg = new PropertyConflictWarning(nameof(BaseDtoWithConflictPropName.Name1), _dtoName);
+            var expMsg = new PropertyConflictWarning(conflictPropName, dtoClass.Name);
 
             Assert.Equal(DiagnosticSeverity.Warning, msg.Severity);
             Assert.Equal(expMsg.Id, msg.Id);
-        }
 
-        DoTest_Success(typeof(BaseDtoWithConflictPropName), expectedProps, TestDiagnostic);
+            var generatedClass = SyntaxChecker.FindAllClassDeclarationsByName(compilation, dtoClass.Name)
+                    .Skip(1) //skip declaration to get only generated
+                    .Single();
+
+            SyntaxChecker.TestOneClassDeclaration(generatedClass, Member2PropDescriptor(notConflictedMembers));
+        }
     }
 
     [Fact]
     public void DtoHasParentWithMethods_WithoutConflictBlNamesTest()
     {
-        DoTest_Success(typeof(BaseDtoWithMethod), _blType.GetProperties());
+        var baseDtoNamespace = DtoNamespace + ".Base";
+        var blMembers = new List<Member>
+        {
+            CommonProperties.Id_Int,
+            new PropertyBuilder("Name1", typeof(string)).Build(),
+            new PropertyBuilder("Name2", typeof(string)).Build(),
+            new PropertyBuilder("Name3", typeof(string)).Build(),
+            new PropertyBuilder("Name4", typeof(string)).Build(),
+        };
+
+        var blClass =
+            new ClassBuilder("BlType")
+            .SetNamespace(BlNamespace)
+            .AddMembers(blMembers)
+            .Build();
+
+        var baseDtoClass1 =
+            new ClassBuilder("BaseEmptyDto")
+            .SetNamespace(baseDtoNamespace)
+            .Build();
+
+        var baseDtoClass2 =
+            new ClassBuilder("BaseDtoWithMethod")
+            .SetNamespace(baseDtoNamespace)
+            .AddBase(baseDtoClass1)
+            .AddMember(new MethodBuilder("Do", typeof(void)).Build())
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("DtoName", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetNamespace(DtoNamespace)
+            .AddBase(baseDtoClass2)
+            .Build();
+
+        RunWithAssert(new[] { blClass, baseDtoClass1, baseDtoClass2, dtoClass }, DoAssert);
+
+        void DoAssert(Compilation compilation, ImmutableArray<Diagnostic> msgs)
+        {
+            Assert.Empty(msgs);
+
+            var generatedClass = SyntaxChecker.FindAllClassDeclarationsByName(compilation, dtoClass.Name)
+                    .Skip(1) //skip declaration to get only generated
+                    .Single();
+
+            SyntaxChecker.TestOneClassDeclaration(generatedClass, Member2PropDescriptor(blMembers));
+        }
     }
 
     [Fact]
-    public void DtoHasParentWithInternalyReservedName()
+    public void DtoHasParentWithInternallyReservedName()
     {
-        void TestDiagnostic(ImmutableArray<Diagnostic> msgs)
+        var baseDtoNamespace = DtoNamespace + ".Base";
+        var blMembers = new List<Member>
+        {
+            CommonProperties.Id_Int,
+            new PropertyBuilder("Name1", typeof(string)).Build(),
+            new PropertyBuilder("Name2", typeof(string)).Build(),
+            new PropertyBuilder("Name3", typeof(string)).Build(),
+            new PropertyBuilder("Name4", typeof(string)).Build(),
+        };
+
+        var blClass =
+            new ClassBuilder("BlType")
+            .SetNamespace(BlNamespace)
+            .AddMembers(blMembers)
+            .Build();
+
+        var baseDtoClass =
+            new ClassBuilder("BaseDtoWithSpecialName")
+            .SetNamespace(baseDtoNamespace)
+            .AddMember(new FieldBuilder("get_Name1", typeof(string)).Build())
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("DtoName", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetNamespace(DtoNamespace)
+            .AddBase(baseDtoClass)
+            .Build();
+
+        var inputClasses = new[] { blClass, baseDtoClass, dtoClass };
+
+        RunWithAssert(inputClasses, DoAssert);
+
+        void DoAssert(Compilation compilation, ImmutableArray<Diagnostic> msgs)
         {
             Assert.Single(msgs);
 
             var msg = msgs[0];
-            var expId = new ReservedMemberConflicError("", _dtoName).Id;
+            var expId = new ReservedMemberConflicError("", dtoClass.Name).Id;
             Assert.Equal(DiagnosticSeverity.Error, msg.Severity);
             Assert.Equal(expId, msg.Id);
-        }
 
-        DoTest_Error(typeof(BaseDtoWithSpecialName), TestDiagnostic);
+            Assert.Equal(inputClasses.Length, compilation.SyntaxTrees.Count());
+        }
     }
 
     [Fact]
     public void DtoHasParentWithMethods_WithConflictBlNames_Error_Test()
-    {        
-        void TestDiagnostic(ImmutableArray<Diagnostic> msgs)
+    {
+        var baseDtoNamespace = DtoNamespace + ".Base";
+        var blMembers = new List<Member>
+        {
+            CommonProperties.Id_Int,
+            new PropertyBuilder("Name1", typeof(string)).Build(),
+            new PropertyBuilder("Name2", typeof(string)).Build(),
+            new PropertyBuilder("Name3", typeof(string)).Build(),
+            new PropertyBuilder("Name4", typeof(string)).Build(),
+        };
+
+        var blClass =
+            new ClassBuilder("BlType")
+            .SetNamespace(BlNamespace)
+            .AddMembers(blMembers)
+            .Build();
+
+        var baseDtoClass1 =
+            new ClassBuilder("BaseEmptyDto")
+            .SetNamespace(baseDtoNamespace)
+            .Build();
+
+        var baseDtoClass2 =
+            new ClassBuilder("BaseDtoWithConflictMethodName")
+            .SetNamespace(baseDtoNamespace)
+            .AddMember(new MethodBuilder("Name1", typeof(bool)).SetBody("return false;").Build())
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("DtoName", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetNamespace(DtoNamespace)
+            .AddBase(baseDtoClass2)
+            .Build();
+
+        var inputClasses = new[] { blClass, baseDtoClass1, baseDtoClass2, dtoClass };
+
+        RunWithAssert(inputClasses, DoAssert);
+
+        void DoAssert(Compilation compilation, ImmutableArray<Diagnostic> msgs)
         {
             Assert.Single(msgs);
             var msg = msgs[0];
 
-            var expMsg = new MemberConflictError(nameof(BaseDtoWithConflictMethodName.Name1), _dtoName);
+            var expMsg = new MemberConflictError("Name1", dtoClass.Name);
 
             Assert.Equal(DiagnosticSeverity.Error, msg.Severity);
             Assert.Equal(expMsg.Id, msg.Id);
-        }
 
-        DoTest_Error(typeof(BaseDtoWithConflictMethodName), TestDiagnostic);
+            Assert.Equal(inputClasses.Length, compilation.SyntaxTrees.Count());
+        }
     }
 
     [Fact]
     public void DtoHasParent_BlHasPropAsBaseDtoName_Test()
     {
-        var blType = typeof(BlTypeWithPropNameAsBaseDtoCtor);
-        var expectedProps = blType.GetProperties();
+        var baseDtoNamespace = DtoNamespace + ".Base";
 
-        DoTest_Success(typeof(BaseDtoWithCtorName), expectedProps, _noDiagnosticMsgs, blType);
+        var baseDtoClass1 =
+            new ClassBuilder("BaseEmptyDto")
+            .SetNamespace(baseDtoNamespace)
+            .Build();
+
+        var blMembers = new List<Member>
+        {
+            CommonProperties.Id_Int,
+            new PropertyBuilder(baseDtoClass1.Name, typeof(string)).Build(),
+        };
+
+        var blClass =
+            new ClassBuilder("BlTypeWithPropNameAsBaseDtoCtor")
+            .SetNamespace(BlNamespace)
+            .AddMembers(blMembers)
+            .Build();
+
+        var baseDtoClass2 =
+            new ClassBuilder("BaseDtoWithCtorName")
+            .SetNamespace(baseDtoNamespace)
+            .AddBase(baseDtoClass1)
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("DtoName", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetNamespace(DtoNamespace)
+            .AddBase(baseDtoClass2)
+            .Build();
+
+        RunWithAssert(new[] { blClass, baseDtoClass1, baseDtoClass2, dtoClass }, DoAssert);
+
+        void DoAssert(Compilation compilation, ImmutableArray<Diagnostic> msgs)
+        {
+            Assert.Empty(msgs);
+
+            var generatedClass = SyntaxChecker.FindAllClassDeclarationsByName(compilation, dtoClass.Name)
+                    .Skip(1) //skip declaration to get only generated
+                    .Single();
+
+            SyntaxChecker.TestOneClassDeclaration(generatedClass, Member2PropDescriptor(blMembers));
+        }
     }
 
     [Fact]
     public void DtoHasParentWithMembers_WithConflictBlNames_Error_Test()
     {
-        var notExpectedNames = new[]
+        var baseDtoNamespace = DtoNamespace + ".Base";
+        var blMembers = new List<Member>
         {
-            nameof(BaseDtoWithConflictedMembers.Name1),
-            nameof(BaseDtoWithConflictedMembers.Name2),
+            CommonProperties.Id_Int,
+            new PropertyBuilder("Name1", typeof(string)).Build(),
+            new PropertyBuilder("Name2", typeof(string)).Build(),
+            new PropertyBuilder("Name3", typeof(string)).Build(),
+            new PropertyBuilder("Name4", typeof(string)).Build(),
         };
 
-        void TestDiagnostic(ImmutableArray<Diagnostic> msgs)
+        var blClass =
+            new ClassBuilder("BlType")
+            .SetNamespace(BlNamespace)
+            .AddMembers(blMembers)
+            .Build();
+
+        var baseDtoClass1 =
+            new ClassBuilder("BaseEmptyDto")
+            .SetNamespace(baseDtoNamespace)
+            .Build();
+
+        var baseDtoClass2 =
+            new ClassBuilder("BaseDtoWithConflictedMembers")
+            .SetNamespace(baseDtoNamespace)
+            .AddMember(new FieldBuilder("Name1", typeof(bool)).Build())
+            .AddMember(new ConstantBuilder("Name2", typeof(bool), "false").Build())
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("DtoName", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetNamespace(DtoNamespace)
+            .AddBase(baseDtoClass2)
+            .Build();
+
+        var inputClasses = new[] { blClass, baseDtoClass1, baseDtoClass2, dtoClass };
+
+        RunWithAssert(inputClasses, DoAssert);
+
+        void DoAssert(Compilation compilation, ImmutableArray<Diagnostic> msgs)
         {
-            Assert.Equal(notExpectedNames.Length, msgs.Length);
+            Assert.Equal(2, msgs.Length);
 
             foreach (var msg in msgs)
             {
-                var expMsg = new MemberConflictError("", _dtoName);
+                var expMsg = new MemberConflictError("", dtoClass.Name);
 
                 Assert.Equal(DiagnosticSeverity.Error, msg.Severity);
                 Assert.Equal(expMsg.Id, msg.Id);
             }
-        }
 
-        DoTest_Error(typeof(BaseDtoWithConflictedMembers), TestDiagnostic);
+            Assert.Equal(inputClasses.Length, compilation.SyntaxTrees.Count());
+        }
     }
 
     [Fact]
     public void DtoHasParentWithMembers_WithConflictBlNames_Warning_Test()
     {
-        var notExpectedNames = new[]
+        var stringType = typeof(string);
+
+        var baseDtoNamespace = DtoNamespace + ".Base";
+        var conflictedPropName = "Name4";
+        var blMembers = new List<Member>
         {
-            "Name2",
-            "Name4", //prop
-            "Name6",
-            "Name8",
-            //nameof(BaseDtoWithConflictedMembers_NotError.Name2),
-            //nameof(BaseDtoWithConflictedMembers_NotError.Name4),
-            //nameof(BaseDtoWithConflictedMembers_NotError.Name6),
-            //nameof(BaseDtoWithConflictedMembers_NotError.Name8),
+            CommonProperties.Id_Int,
+            new PropertyBuilder("Name1", stringType).Build(),
+            new PropertyBuilder("Name2", stringType).Build(),
+            new PropertyBuilder("Name3", stringType).Build(),
+            new PropertyBuilder(conflictedPropName, stringType).Build(),
+            new PropertyBuilder("Name5", stringType).Build(),
+            new PropertyBuilder("Name6", stringType).Build(),
+            new PropertyBuilder("Name7", stringType).Build(),
+            new PropertyBuilder("Name8", stringType).Build(),
         };
-        var expected = _blType.GetProperties().Where(x => x.Name != "Name4");
-        
-        void TestDiagnostic(ImmutableArray<Diagnostic> msgs)
+
+        var privateDtoMembers = new List<Member>
         {
-            Assert.Equal(notExpectedNames.Length, msgs.Length);
+            new FieldBuilder("Name1", stringType).SetAccessor(Visibility.Private).Build(),
+            new PropertyBuilder("Name3", stringType).SetAccessor(Visibility.Private).Build(),
+            new MethodBuilder("Name5", stringType).SetBody("return null;").SetAccessor(Visibility.Private).Build(),
+            new ConstantBuilder("Name7", stringType, "\"SomeValue\"").SetAccessor(Visibility.Private).Build(),
+        };
 
-            Assert.Equal(notExpectedNames.Length, msgs.Where(x => x.Severity == DiagnosticSeverity.Warning).Count());
+        var protectedDtoMembers = new List<Member>
+        {
+            new FieldBuilder("Name2", stringType).SetAccessor(Visibility.Protected).Build(),
+            new PropertyBuilder(conflictedPropName, stringType).SetAccessor(Visibility.Protected).Build(),
+            new MethodBuilder("Name6", stringType).SetBody("return null;").SetAccessor(Visibility.Protected).Build(),
+            new ConstantBuilder("Name8", stringType, "\"SomeValue\"").SetAccessor(Visibility.Protected).Build(),
+        };
 
-            var wrnIdMember = new MemberConflictWarning("", _dtoName).Id;
-            var wrnIdProp = new PropertyConflictWarning("", _dtoName).Id;
+        var blClass =
+            new ClassBuilder("BlType")
+            .SetNamespace(BlNamespace)
+            .AddMembers(blMembers)
+            .Build();
+
+        var baseDtoClass1 =
+            new ClassBuilder("BaseEmptyDto")
+            .SetNamespace(baseDtoNamespace)
+            .Build();
+
+        var baseDtoClass2 =
+            new ClassBuilder("BaseDtoWithConflictedMembers")
+            .SetNamespace(baseDtoNamespace)
+            .AddBase(baseDtoClass1)
+            .AddMembers(privateDtoMembers)
+            .AddMembers(protectedDtoMembers)
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("DtoName", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetNamespace(DtoNamespace)
+            .AddBase(baseDtoClass2)
+            .Build();
+
+        RunWithAssert(new[] { blClass, baseDtoClass1, baseDtoClass2, dtoClass }, DoAssert);
+
+        void DoAssert(Compilation compilation, ImmutableArray<Diagnostic> msgs)
+        {
+            Assert.Equal(protectedDtoMembers.Count, msgs.Length);
+
+            Assert.Equal(protectedDtoMembers.Count, msgs.Where(x => x.Severity == DiagnosticSeverity.Warning).Count());
+
+            var wrnIdMember = new MemberConflictWarning("", dtoClass.Name).Id;
+            var wrnIdProp = new PropertyConflictWarning("", dtoClass.Name).Id;
 
             Assert.Single(msgs.Where(x => x.Id == wrnIdProp).ToList());
             Assert.Equal(3, msgs.Where(x => x.Id == wrnIdMember).Count());
-        }
 
-        DoTest_Success(typeof(BaseDtoWithConflictedMembers_NotError), expected, TestDiagnostic);
+            var generatedClass = SyntaxChecker.FindAllClassDeclarationsByName(compilation, dtoClass.Name)
+                    .Skip(1) //skip declaration to get only generated
+                    .Single();
+
+            var expectedPropsInDto = Member2PropDescriptor(blMembers.Where(x => x.Name != conflictedPropName));
+            SyntaxChecker.TestOneClassDeclaration(generatedClass, expectedPropsInDto);
+        }
     }
 
     [Fact]
     public void DtoHasParentWithStatic()
     {
-        void TestDiagnostic(ImmutableArray<Diagnostic> msgs)
+        var baseDtoNamespace = DtoNamespace + ".Base";
+        var blMembers = new List<Member>
         {
-            Assert.Equal(2, msgs.Length);
-            var expId = new MemberConflictError("", _dtoName).Id;
+            CommonProperties.Id_Int,
+            new PropertyBuilder("Name1", typeof(string)).Build(),
+            new PropertyBuilder("Name2", typeof(string)).Build(),
+            new PropertyBuilder("Name3", typeof(string)).Build(),
+            new PropertyBuilder("Name4", typeof(string)).Build(),
+        };
+
+        var visibleDtoMembers = new List<Member>
+        {
+            new PropertyBuilder("Name1", typeof(string)).SetStatic(true).SetAccessor(Visibility.Protected).Build(),
+            new PropertyBuilder("Name2", typeof(string)).SetStatic(true).SetAccessor(Visibility.Public).Build(),
+        };
+
+        var blClass =
+            new ClassBuilder("BlType")
+            .SetNamespace(BlNamespace)
+            .AddMembers(blMembers)
+            .Build();
+
+        var baseDtoClass1 =
+            new ClassBuilder("BaseEmptyDto")
+            .SetNamespace(baseDtoNamespace)
+            .Build();
+
+        var baseDtoClass2 =
+            new ClassBuilder("BaseDtoWithStatic")
+            .SetNamespace(baseDtoNamespace)
+            .AddMembers(visibleDtoMembers)
+            .AddMember(new PropertyBuilder("Name3", typeof(string)).SetStatic(true).SetAccessor(Visibility.Private).Build())
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("DtoName", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetNamespace(DtoNamespace)
+            .AddBase(baseDtoClass2)
+            .Build();
+
+        var inputClasses = new[] { blClass, baseDtoClass1, baseDtoClass2, dtoClass };
+
+        RunWithAssert(inputClasses, DoAssert);
+
+        void DoAssert(Compilation compilation, ImmutableArray<Diagnostic> msgs)
+        {
+            Assert.Equal(visibleDtoMembers.Count, msgs.Length);
+            var expId = new MemberConflictError("", dtoClass.Name).Id;
 
             Assert.Equal(DiagnosticSeverity.Error, msgs[0].Severity);
             Assert.Equal(DiagnosticSeverity.Error, msgs[1].Severity);
 
             Assert.Equal(expId, msgs[0].Id);
             Assert.Equal(expId, msgs[1].Id);
-        }
 
-        DoTest_Error(typeof(BaseDtoWithStatic), TestDiagnostic);
+            Assert.Equal(inputClasses.Length, compilation.SyntaxTrees.Count());
+        }
     }
 
     [Fact]
     public void DtoHasGenericParent()
     {
-        var expected = _blType.GetProperties().Where(x => x.Name != nameof(BaseDtoGeneric<object>.Name1));
+        var baseDtoNamespace = DtoNamespace + ".Base";
+        var conflictedPropName = "Prop1";
+        var blMembers = new List<Member>
+        {
+            CommonProperties.Id_Int,
+            new PropertyBuilder("Name1", typeof(string)).Build(),
+            new PropertyBuilder("Name2", typeof(string)).Build(),
+            new PropertyBuilder("Name3", typeof(string)).Build(),
+            new PropertyBuilder("Name4", typeof(string)).Build(),
+        };
 
-        void TestDiagnostic(ImmutableArray<Diagnostic> msgs)
+        var blClass =
+            new ClassBuilder("BlType")
+            .SetNamespace(BlNamespace)
+            .AddMembers(blMembers)
+            .AddMember(new PropertyBuilder(conflictedPropName, typeof(string)).Build())
+            .Build();
+
+        var baseDtoClass1 =
+            new ClassBuilder("BaseEmptyDto")
+            .SetNamespace(baseDtoNamespace)
+            .Build();
+
+        var baseDtoClass2 =
+            new ClassBuilder("BaseDtoGeneric<T>")
+            .SetNamespace(baseDtoNamespace)
+            .AddBase(baseDtoClass1)
+            .AddMember(new PropertyBuilder(conflictedPropName, "T").Build())
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("DtoName", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetNamespace(DtoNamespace)
+            .AddBase("BaseDtoGeneric<object>", baseDtoNamespace)
+            .Build();
+
+        RunWithAssert(new[] { blClass, baseDtoClass1, baseDtoClass2, dtoClass }, DoAssert);
+
+        void DoAssert(Compilation compilation, ImmutableArray<Diagnostic> msgs)
         {
             Assert.Single(msgs);
-            var expId = new PropertyConflictWarning("", _dtoName).Id;
+            var expId = new PropertyConflictWarning("", dtoClass.Name).Id;
 
             Assert.Equal(DiagnosticSeverity.Warning, msgs[0].Severity);
 
             Assert.Equal(expId, msgs[0].Id);
-        }
 
-        DoTest_Success(typeof(BaseDtoGeneric<DateTime>), expected, TestDiagnostic);
+            var generatedClass = SyntaxChecker.FindAllClassDeclarationsByName(compilation, dtoClass.Name)
+                    .Skip(1) //skip declaration to get only generated
+                    .Single();
+
+            SyntaxChecker.TestOneClassDeclaration(generatedClass, Member2PropDescriptor(blMembers));
+        }
     }
 }

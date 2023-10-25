@@ -4,6 +4,7 @@ using AutoDto.Tests.TestHelpers.CodeBuilder.Elements;
 using Microsoft.CodeAnalysis;
 using System.Collections.Immutable;
 using static AutoDto.Tests.TestHelpers.DtoCodeCreator;
+using static AutoDto.Tests.TestHelpers.SyntaxChecker;
 
 namespace AutoDto.Tests;
 
@@ -57,5 +58,20 @@ public abstract class BaseUnitTest
         var res = Generator.Run(classes, extraRefs);
 
         assertCallback(res.compilation, res.compileMsgs);
+    }
+    protected IEnumerable<PropertyDescriptor> Member2PropDescriptor(IEnumerable<Member> members)
+    {
+        return
+        members
+            .Select(x =>
+            {
+                return x.ReturnType.ToLower() switch
+                {
+                    "string" => new PropertyDescriptor(typeof(string), x.Name),
+                    "int32" => new PropertyDescriptor(typeof(int), x.Name),
+                    _ => throw new NotImplementedException()
+                };
+
+            });
     }
 }

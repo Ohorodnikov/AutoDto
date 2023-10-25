@@ -41,6 +41,12 @@ public class ClassBuilder : BaseElementBuilder<ClassElement>
         return this;
     }
 
+    public ClassBuilder AddBase(ClassElement baseClass)
+    {
+        AddBase(baseClass.Name, baseClass.Namespace);
+        return this;
+    }
+
     public ClassBuilder AddMember(Member member)
     {
         Members.Add(member);
