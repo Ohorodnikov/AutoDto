@@ -62,8 +62,7 @@ public abstract class BaseUnitTest
 
     protected IEnumerable<PropertyDescriptor> Member2PropDescriptor(IEnumerable<Member> members)
     {
-        return
-        members.Select(x => new PropertyDescriptor(TypeMap[x.ReturnType], x.Name));
+        return members.Select(x => new PropertyDescriptor(TypeMap[x.ReturnType], x.Name));
     }
 
     private static Dictionary<string, Type> TypeMap = new()
@@ -72,5 +71,7 @@ public abstract class BaseUnitTest
         { "int", typeof(int) },
         { "Int32", typeof(int) },
         { "DateTime", typeof(DateTime) },
+        { "DateTimeKind", typeof(DateTimeKind) },
+        { "Object", typeof(object) },
     };
 }
