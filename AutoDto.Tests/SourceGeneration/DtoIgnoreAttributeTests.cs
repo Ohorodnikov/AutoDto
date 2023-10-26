@@ -1,85 +1,106 @@
 ﻿using AutoDto.Setup;
-using AutoDto.Tests.SourceGeneration.Models;
+using AutoDto.SourceGen.DiagnosticMessages.Errors;
+using AutoDto.SourceGen.DiagnosticMessages.Warnings;
 using AutoDto.Tests.TestHelpers;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System.Reflection;
-using System.Runtime.InteropServices;
-using static AutoDto.Tests.TestHelpers.DtoCodeCreator;
-using static AutoDto.Tests.TestHelpers.SyntaxChecker;
+using AutoDto.Tests.TestHelpers.CodeBuilder.Builders;
+using AutoDto.Tests.TestHelpers.CodeBuilder.Elements;
+using Microsoft.CodeAnalysis;
+using System.Collections.Immutable;
 
 namespace AutoDto.Tests.SourceGeneration;
 
 public class IgnorePropTest : BaseUnitTest
 {
+    const string DESCRIPTION = "Description";
+    const string IGNORE_DATE_TIME = "IgnoreDateTime";
+
     [Theory]
 
-    //Ignore one prop
-    [InlineData(nameof(IgnorePropModel.IgnoreDateTime))]
-    [InlineData(nameof(IgnorePropModel.Description))]
+    [InlineData("")]
+
+    [InlineData(IGNORE_DATE_TIME)]
+    [InlineData(DESCRIPTION)]
     [InlineData("SomeInvalidPropName")]
 
-    //Ignore many props
-    [InlineData(nameof(IgnorePropModel.IgnoreDateTime), nameof(IgnorePropModel.Description))]
-    [InlineData(nameof(IgnorePropModel.IgnoreDateTime), "Invalid2")]
+    [InlineData(IGNORE_DATE_TIME, DESCRIPTION)]
+    [InlineData(IGNORE_DATE_TIME, "Invalid2")]
     [InlineData("SomeInvalidPropName", "Invalid2")]
     public void IgnorePropsFromAttributeTest(params string[] ignoredProps)
     {
-        var ignoreAttr = typeof(DtoIgnoreAttribute);
-        var attrParams = string.Join(", ", ignoredProps.Select(x => '"' + x + '"'));
-        var attr = $"[{ignoreAttr.Name}({attrParams})]";
-        RunTest(attr, ignoredProps);
+        var blMembers = new Member[]
+        {
+            CommonProperties.Id_Int,
+            new PropertyBuilder("Name", typeof(string)).Build(),
+            new PropertyBuilder(DESCRIPTION, typeof(string)).Build(),
+            new PropertyBuilder(IGNORE_DATE_TIME, typeof(DateTime)).Build(),
+        };
+
+        var blClass =
+            new ClassBuilder("IgnorePropModel")
+            .SetNamespace(BlNamespace)
+            .AddMembers(blMembers)
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetNamespace(DtoNamespace)
+            .AddAttribute(typeof(DtoIgnoreAttribute), string.Join(", ", ignoredProps.Select(WrapInQuotes)))
+            .Build();
+
+        var expectedPropsInDto = blMembers.Where(x => !ignoredProps.Contains(x.Name)).ToArray();
+        var invalidPropsToIgnore = ignoredProps.Where(x => !blMembers.Any(bl => bl.Name == x)).ToArray();
+
+        RunWithAssert(new[] { blClass, dtoClass }, DoAssert);
+        void DoAssert(Compilation compilation, ImmutableArray<Diagnostic> msgs)
+        {
+            Assert.Equal(invalidPropsToIgnore.Length, msgs.Length);
+
+            var expMsg = new NotFoundPropertyInBlWarn("", dtoClass.Name);
+
+            Assert.All(msgs, msg => Assert.Equal(DiagnosticSeverity.Warning, msg.Severity));
+            Assert.All(msgs, msg => Assert.Equal(expMsg.Id, msg.Id));
+
+            var generatedClass = SyntaxChecker.FindAllClassDeclarationsByName(compilation, dtoClass.Name)
+                    .Skip(1) //skip declaration to get only generated
+                    .Single();
+
+            SyntaxChecker.TestOneClassDeclaration(generatedClass, Member2PropDescriptor(expectedPropsInDto));
+        }
     }
 
-    [Fact]
-    public void IgnoreEmptyStringAtrributeTest()
-    {
-        var ignoreAttr = typeof(DtoIgnoreAttribute);
-        var attrIgnoreDef = $"[{ignoreAttr.Name}(\"\")]";
-        RunTest(attrIgnoreDef, new string[0]);
-    }
+    private string WrapInQuotes(string text) => '"' + text + '"';
 
     [Fact]
     public void EmptyIgnoreAttributeTest()
     {
-        var ignoreAttr = typeof(DtoIgnoreAttribute);
+        var blClass =
+            new ClassBuilder("IgnorePropModel")
+            .SetNamespace(BlNamespace)
+            .AddMembers(new Member[]
+            {
+                CommonProperties.Id_Int,
+                new PropertyBuilder("Name", typeof(string)).Build(),
+            })
+            .Build();
 
-        var attrList = new List<(string nameSpace, string value)>
+        var dtoClass =
+            new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetNamespace(DtoNamespace)
+            .AddAttribute(typeof(DtoIgnoreAttribute))
+            .Build();
+
+        RunWithAssert(new[] { blClass, dtoClass }, DoAssert);
+        void DoAssert(Compilation compilation, ImmutableArray<Diagnostic> msgs)
         {
-            (ignoreAttr.Namespace, $"[{ignoreAttr.Name}]")
-        };
+            Assert.Single(msgs);
+            var msg = msgs[0];
 
-        var dto = new DtoData(typeof(IgnorePropModel), RelationStrategy.None, "MyDto", attrList);
+            var expMsg = new AttributeValueNotSetError();
 
-        var code = DtoCreator.GetDtosDefinition(dto);
+            Assert.Equal(DiagnosticSeverity.Error, msg.Severity);
+            Assert.Equal(expMsg.Id, msg.Id);
 
-        var trees = Generator.Run(code).SyntaxTrees;
-
-        Assert.Single(trees);
-    }
-
-    private void RunTest(string attributeDef, string[] ignoredProps)
-    {
-        var ignoreAttr = typeof(DtoIgnoreAttribute);
-
-        var attrList = new List<(string nameSpace, string value)>
-        {
-            (ignoreAttr.Namespace, attributeDef)
-        };
-
-        var dto = new DtoData(typeof(IgnorePropModel), RelationStrategy.None, "MyDto", attrList);
-        var code = DtoCreator.GetDtosDefinition(dto);
-        
-        var compilation = Generator.Run(code);
-
-        var genClass = SyntaxChecker.FindClassByName(compilation, dto.DtoName);
-
-        var expectedProps = GetExpectedProperties(dto.Type, ignoredProps).Select(x => new PropertyDescriptor(x));
-
-        SyntaxChecker.TestOneClassDeclaration(genClass, expectedProps);
-    }
-
-    private IEnumerable<PropertyInfo> GetExpectedProperties(Type type, string[] ignoredProps)
-    {
-        return type.GetPublicInstProperties().Where(p => !ignoredProps.Contains(p.Name));
+            Assert.Equal(2, compilation.SyntaxTrees.Count()); //input trees only
+        }
     }
 }

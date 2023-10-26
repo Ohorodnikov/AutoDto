@@ -59,19 +59,18 @@ public abstract class BaseUnitTest
 
         assertCallback(res.compilation, res.compileMsgs);
     }
+
     protected IEnumerable<PropertyDescriptor> Member2PropDescriptor(IEnumerable<Member> members)
     {
         return
-        members
-            .Select(x =>
-            {
-                return x.ReturnType.ToLower() switch
-                {
-                    "string" => new PropertyDescriptor(typeof(string), x.Name),
-                    "int32" => new PropertyDescriptor(typeof(int), x.Name),
-                    _ => throw new NotImplementedException()
-                };
-
-            });
+        members.Select(x => new PropertyDescriptor(TypeMap[x.ReturnType], x.Name));
     }
+
+    private static Dictionary<string, Type> TypeMap = new()
+    {
+        { "String", typeof(string) },
+        { "int", typeof(int) },
+        { "Int32", typeof(int) },
+        { "DateTime", typeof(DateTime) },
+    };
 }
