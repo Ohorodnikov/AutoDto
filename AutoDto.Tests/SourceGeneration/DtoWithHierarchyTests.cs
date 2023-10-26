@@ -1,6 +1,5 @@
 ﻿using AutoDto.SourceGen.DiagnosticMessages.Errors;
 using AutoDto.SourceGen.DiagnosticMessages.Warnings;
-using AutoDto.Tests.SourceGeneration.Models.HierarchyTestModels;
 using AutoDto.Tests.TestHelpers.CodeBuilder.Builders;
 using AutoDto.Tests.TestHelpers.CodeBuilder.Elements;
 using Microsoft.CodeAnalysis;
