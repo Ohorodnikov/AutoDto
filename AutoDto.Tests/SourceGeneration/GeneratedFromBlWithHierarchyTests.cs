@@ -1,12 +1,8 @@
-﻿using AutoDto.Tests.SourceGeneration.Models;
-using AutoDto.Tests.SourceGeneration.Models.HierarchyTestModels;
-using AutoDto.Tests.TestHelpers;
+﻿using AutoDto.Tests.TestHelpers;
 using AutoDto.Tests.TestHelpers.CodeBuilder.Builders;
 using AutoDto.Tests.TestHelpers.CodeBuilder.Elements;
 using Microsoft.CodeAnalysis;
 using System.Collections.Immutable;
-using static AutoDto.Tests.TestHelpers.DtoCodeCreator;
-using static AutoDto.Tests.TestHelpers.SyntaxChecker;
 
 namespace AutoDto.Tests.SourceGeneration;
 
@@ -18,15 +14,15 @@ public class GeneratedFromBlWithHierarchyTests : BaseUnitTest
         var idProp = CommonProperties.Id_Int;
         var nameProp = new PropertyBuilder("Name", typeof(string)).Build();
 
-        var expectedPropsInDto = new[] 
-        { 
-            idProp, 
-            nameProp 
+        var expectedPropsInDto = new[]
+        {
+            idProp,
+            nameProp
         };
 
-        var baseBl = 
+        var baseBl =
             new ClassBuilder("BaseBl")
-            .SetNamespace(BlNamespace) 
+            .SetNamespace(BlNamespace)
             .AddMember(idProp)
             .Build();
 
