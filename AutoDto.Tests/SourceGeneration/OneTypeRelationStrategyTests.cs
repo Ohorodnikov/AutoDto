@@ -1,132 +1,229 @@
 ﻿using AutoDto.Setup;
-using AutoDto.Tests.SourceGeneration.Models;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Threading.Tasks;
-using Xunit.Abstractions;
-using static AutoDto.Tests.TestHelpers.DtoCodeCreator;
+using AutoDto.Tests.TestHelpers.CodeBuilder.Builders;
+using AutoDto.Tests.TestHelpers.CodeBuilder.Elements;
 using static AutoDto.Tests.TestHelpers.SyntaxChecker;
 
 namespace AutoDto.Tests.SourceGeneration;
 
-public class OneTypeRelationStrategyTests : BaseUnitTest
+public class RelationStrategyTests : BaseUnitTest
 {
-    #region relation object
+    protected void RunWithBaseAssert(IEnumerable<ClassElement> blClasses, ClassElement dtoClass, PropertyDescriptor[] expectedPropsInDto)
+    {
+        RunWithAssert(blClasses.Append(dtoClass), (compilation, msgs) =>
+        {
+            Assert.Empty(msgs);
+
+            var generatedClass = SyntaxChecker.FindAllClassDeclarationsByName(compilation, dtoClass.Name)
+                    .Skip(1) //skip declaration to get only generated
+                    .Single();
+
+            SyntaxChecker.TestOneClassDeclaration(generatedClass, expectedPropsInDto);
+        });
+    }
+}
+
+public class SimpleTypeRelationStrategyTests : RelationStrategyTests
+{
     [Fact]
     public void Strategy_NotSet_Test()
     {
-        var blType = typeof(TypeWithRelation);
+        var relPropName = "WithId";
 
-        var expected = new[]
+        var classWORelation =
+            new ClassBuilder("TypeWithoutRelation")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .AddMember(CommonProperties.Description)
+            .Build();
+
+        var blClass =
+            new ClassBuilder("TypeWithRelation")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .AddMember(CommonProperties.Description)
+            .AddMember(new PropertyBuilder(relPropName, classWORelation.Name).Build())
+            .Build();
+
+        var dtoClass =
+            new ClassBuilder("MyDto")
+            .SetNamespace(DtoNamespace)
+            .AddUsing(blClass.Namespace)
+            .AddAttribute(typeof(DtoFromAttribute), $"typeof({blClass.Name})")
+            .SetPartial()
+            .Build();
+
+        var expectedDtoProps = new PropertyDescriptor[]
         {
-            blType.GetProperty(nameof(TypeWithRelation.Id)),
-            blType.GetProperty(nameof(TypeWithRelation.Name)),
-            blType.GetProperty(nameof(TypeWithRelation.Description)),
-            blType.GetProperty(nameof(TypeWithRelation.WithId)),
-        }
-        .Select(x => new PropertyDescriptor(x))
-        .ToList();
+            new PropertyDescriptor(typeof(int), "Id"),
+            new PropertyDescriptor(typeof(string), "Name"),
+            new PropertyDescriptor(typeof(string), "Description"),
+            new PropertyDescriptor(new TypeDescriptor(classWORelation.Namespace, classWORelation.Name, TypeType.Simple, null), relPropName),
+        };
 
-        var type = typeof(TypeWithRelation);
-        var attr = typeof(DtoFromAttribute);
-        var name = attr.Name.Replace(nameof(Attribute), "");
-
-        var code = $@"
-using {attr.Namespace};
-using {type.Namespace};
-
-namespace AutoDto.Tests.Dto;
-
-[{name}(typeof({type.Name}))]
-{DtoCreator.GetPublicDtoDef("MyDto")} {{ }}
-";
-
-        var compilation = Generator.Run(code);
-
-        var genClass = SyntaxChecker.FindClassByName(compilation, "MyDto");
-
-        SyntaxChecker.TestOneClassDeclaration(genClass, expected);        
+        RunWithBaseAssert(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
     }
 
     [Fact]
     public void Strategy_None_Test()
     {
-        var blType = typeof(TypeWithRelation);
+        var relPropName = "WithId";
 
-        var expected = new[]
+        var classWORelation =
+            new ClassBuilder("TypeWithoutRelation")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .AddMember(CommonProperties.Description)
+            .Build();
+
+        var blClass =
+            new ClassBuilder("TypeWithRelation")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .AddMember(CommonProperties.Description)
+            .AddMember(new PropertyBuilder(relPropName, classWORelation.Name).Build())
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetRelationStrategy(RelationStrategy.None)
+            .SetNamespace(DtoNamespace)
+            .Build();
+
+        var expectedDtoProps = new PropertyDescriptor[]
         {
-            blType.GetProperty(nameof(TypeWithRelation.Id)),
-            blType.GetProperty(nameof(TypeWithRelation.Name)),
-            blType.GetProperty(nameof(TypeWithRelation.Description)),
-            blType.GetProperty(nameof(TypeWithRelation.WithId)),
-        }
-        .Select(x => (x.PropertyType, x.Name))
-        .ToList();
+            new PropertyDescriptor(typeof(int), "Id"),
+            new PropertyDescriptor(typeof(string), "Name"),
+            new PropertyDescriptor(typeof(string), "Description"),
+            new PropertyDescriptor(new TypeDescriptor(classWORelation.Namespace, classWORelation.Name, TypeType.Simple, null), relPropName),
+        };
 
-        RunTestWithOneType(blType, RelationStrategy.None, expected.ToArray());
+        RunWithBaseAssert(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
     }
 
     [Fact]
-    public void Strategy_Replace2Id_Test() 
+    public void Strategy_Replace2Id_Test()
     {
-        var blType = typeof(TypeWithRelation);
+        var relPropName = "WithId";
 
-        var expected = new[]
+        var classWORelation =
+            new ClassBuilder("TypeWithoutRelation")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .AddMember(CommonProperties.Description)
+            .Build();
+
+        var blClass =
+            new ClassBuilder("TypeWithRelation")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .AddMember(CommonProperties.Description)
+            .AddMember(new PropertyBuilder(relPropName, classWORelation.Name).Build())
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetRelationStrategy(RelationStrategy.ReplaceToIdProperty)
+            .SetNamespace(DtoNamespace)
+            .Build();
+
+        var expectedDtoProps = new PropertyDescriptor[]
         {
-            blType.GetProperty(nameof(TypeWithRelation.Id)),
-            blType.GetProperty(nameof(TypeWithRelation.Name)),
-            blType.GetProperty(nameof(TypeWithRelation.Description)),
-        }
-        .Select(x => (x.PropertyType, x.Name))
-        .ToList();
+            new PropertyDescriptor(typeof(int), "Id"),
+            new PropertyDescriptor(typeof(string), "Name"),
+            new PropertyDescriptor(typeof(string), "Description"),
+            new PropertyDescriptor(typeof(int), relPropName + "Id"),
+        };
 
-        expected.Add((typeof(long), nameof(TypeWithRelation.WithId) + "Id"));
-
-        RunTestWithOneType(blType, RelationStrategy.ReplaceToIdProperty, expected.ToArray());
+        RunWithBaseAssert(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
     }
 
     [Fact]
     public void Strategy_AddId_Test()
     {
-        var blType = typeof(TypeWithRelation);
+        var relPropName = "WithId";
 
-        var expected = new[]
+        var classWORelation =
+            new ClassBuilder("TypeWithoutRelation")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .AddMember(CommonProperties.Description)
+            .Build();
+
+        var blClass =
+            new ClassBuilder("TypeWithRelation")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .AddMember(CommonProperties.Description)
+            .AddMember(new PropertyBuilder(relPropName, classWORelation.Name).Build())
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetRelationStrategy(RelationStrategy.AddIdProperty)
+            .SetNamespace(DtoNamespace)
+            .Build();
+
+        var expectedDtoProps = new PropertyDescriptor[]
         {
-            blType.GetProperty(nameof(TypeWithRelation.Id)),
-            blType.GetProperty(nameof(TypeWithRelation.Name)),
-            blType.GetProperty(nameof(TypeWithRelation.Description)),
-            blType.GetProperty(nameof(TypeWithRelation.WithId)),
-        }
-        .Select(x => (x.PropertyType, x.Name))
-        .ToList();
+            new PropertyDescriptor(typeof(int), "Id"),
+            new PropertyDescriptor(typeof(string), "Name"),
+            new PropertyDescriptor(typeof(string), "Description"),
+            new PropertyDescriptor(typeof(int), relPropName + "Id"),
+            new PropertyDescriptor(new TypeDescriptor(classWORelation.Namespace, classWORelation.Name, TypeType.Simple, null), relPropName),
+        };
 
-        expected.Add((typeof(long), nameof(TypeWithRelation.WithId) + "Id"));
-
-        RunTestWithOneType(blType, RelationStrategy.AddIdProperty, expected.ToArray());
+        RunWithBaseAssert(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
     }
 
     [Fact]
     public void Strategy_AddId_FindIdInHierarchy_Test()
     {
-        var blType = typeof(TypeWithRelWithHierarchy);
+        var relPropName = "Relation";
 
-        var expected = new[]
+        var baseBl =
+            new ClassBuilder("BaseBl<T>")
+            .SetNamespace(BlNamespace)
+            .AddMember(new PropertyBuilder("Id", "T").Build())
+            .Build();
+
+        var classWORelation =
+            new ClassBuilder("TypeWithoutRelation")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Name)
+            .AddBase("BaseBl<string>")
+            .Build();
+
+        var blClass =
+            new ClassBuilder("TypeWithRelWithHierarchy")
+            .SetNamespace(BlNamespace)
+            .AddBase("BaseBl<int>")
+            .AddMember(CommonProperties.Description)
+            .AddMember(new PropertyBuilder(relPropName, classWORelation.Name).Build())
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetRelationStrategy(RelationStrategy.AddIdProperty)
+            .SetNamespace(DtoNamespace)
+            .Build();
+
+        var expectedDtoProps = new PropertyDescriptor[]
         {
-            blType.GetProperty(nameof(TypeWithRelWithHierarchy.Id)),
-            blType.GetProperty(nameof(TypeWithRelWithHierarchy.Description)),
-            blType.GetProperty(nameof(TypeWithRelWithHierarchy.Relation)),
-        }
-        .Select(x => (x.PropertyType, x.Name))
-        .ToList();
+            new PropertyDescriptor(typeof(int), "Id"),
+            new PropertyDescriptor(typeof(string), "Description"),
+            new PropertyDescriptor(typeof(string), relPropName + "Id"),
+            new PropertyDescriptor(new TypeDescriptor(classWORelation.Namespace, classWORelation.Name, TypeType.Simple, null), relPropName),
+        };
 
-        expected.Add((typeof(string), nameof(TypeWithRelWithHierarchy.Relation) + "Id"));
-
-        RunTestWithOneType(blType, RelationStrategy.AddIdProperty, expected.ToArray());
+        RunWithBaseAssert(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
     }
 
     [Theory]
@@ -135,128 +232,123 @@ namespace AutoDto.Tests.Dto;
     [InlineData(RelationStrategy.AddIdProperty)]
     public void RelationWithoutId_Test(RelationStrategy strategy)
     {
-        var blType = typeof(TypeWithRelationWithoutId);
+        var relPropName = "WithoutId";
 
-        var expected = new[]
+        var classWOId =
+            new ClassBuilder("ClassWithoutId")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Name)
+            .AddMember(CommonProperties.Description)
+            .Build();
+
+        var blClass =
+            new ClassBuilder("TypeWithRelationWithoutId")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .AddMember(CommonProperties.Description)
+            .AddMember(new PropertyBuilder(relPropName, classWOId.Name).Build())
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetRelationStrategy(strategy)
+            .SetNamespace(DtoNamespace)
+            .Build();
+
+        var expectedDtoProps = new PropertyDescriptor[]
         {
-            blType.GetProperty(nameof(TypeWithRelationWithoutId.Id)),
-            blType.GetProperty(nameof(TypeWithRelationWithoutId.Name)),
-            blType.GetProperty(nameof(TypeWithRelationWithoutId.Description)),
-            blType.GetProperty(nameof(TypeWithRelationWithoutId.WithoutId)),
-        }
-        .Select(x => (x.PropertyType, x.Name))
-        .ToList();
+            new PropertyDescriptor(typeof(int), "Id"),
+            new PropertyDescriptor(typeof(string), "Name"),
+            new PropertyDescriptor(typeof(string), "Description"),
+            new PropertyDescriptor(new TypeDescriptor(classWOId.Namespace, classWOId.Name, TypeType.Simple, null), relPropName),
+        };
 
-        RunTestWithOneType(blType, strategy, expected.ToArray());
+        RunWithBaseAssert(new[] { classWOId, blClass }, dtoClass, expectedDtoProps);
     }
+}
 
-    #endregion
-    #region relation collection
-
-    [Theory]
-    [InlineData(typeof(TypeWithEnumerableRelation), typeof(IEnumerable<long>))]
-    [InlineData(typeof(TypeWithListRelation), typeof(List<long>))]
-    [InlineData(typeof(TypeWithHashSetRelation), typeof(HashSet<long>))]
-    public void Strategy_Replace2Id_Collection_Test(Type blType, Type propType)
-    {
-        var expected = new[]
-        {
-            blType.GetProperty(nameof(TypeWithEnumerableRelation.Id)),
-            blType.GetProperty(nameof(TypeWithEnumerableRelation.Name)),
-            blType.GetProperty(nameof(TypeWithEnumerableRelation.Description)),
-            //blType.GetProperty(nameof(TypeWithEnumerableRelation.WithId)),
-        }
-        .Select(x => (x.PropertyType, x.Name))
-        .ToList();
-
-        expected.Add((propType, nameof(TypeWithEnumerableRelation.WithId) + "Ids"));
-
-        RunTestWithOneType(blType, RelationStrategy.ReplaceToIdProperty, expected.ToArray());
-    }
-
-    [Theory]
-    [InlineData(typeof(TypeWithEnumerableRelation), typeof(IEnumerable<long>))]
-    [InlineData(typeof(TypeWithListRelation), typeof(List<long>))]
-    [InlineData(typeof(TypeWithHashSetRelation), typeof(HashSet<long>))]
-    public void Stategy_AddId_Collection_Test(Type blType, Type propType)
-    {
-        var expected = new[]
-        {
-            blType.GetProperty(nameof(TypeWithEnumerableRelation.Id)),
-            blType.GetProperty(nameof(TypeWithEnumerableRelation.Name)),
-            blType.GetProperty(nameof(TypeWithEnumerableRelation.Description)),
-            blType.GetProperty(nameof(TypeWithEnumerableRelation.WithId)),
-        }
-        .Select(x => (x.PropertyType, x.Name))
-        .ToList();
-
-        expected.Add((propType, nameof(TypeWithEnumerableRelation.WithId) + "Ids"));
-
-        RunTestWithOneType(blType, RelationStrategy.AddIdProperty, expected.ToArray());
-    }
-
-    [Theory]
-    [InlineData(RelationStrategy.None)]
-    [InlineData(RelationStrategy.ReplaceToIdProperty)]
-    [InlineData(RelationStrategy.AddIdProperty)]
-    public void RelationWithoutId_Collection_Test(RelationStrategy strategy)
-    {
-        var blType = typeof(TypeWithEnumerableRelationWithoutId);
-
-        var expected = new[]
-        {
-            blType.GetProperty(nameof(TypeWithEnumerableRelationWithoutId.Id)),
-            blType.GetProperty(nameof(TypeWithEnumerableRelationWithoutId.Name)),
-            blType.GetProperty(nameof(TypeWithEnumerableRelationWithoutId.Description)),
-            blType.GetProperty(nameof(TypeWithEnumerableRelationWithoutId.WithoutId)),
-        }
-        .Select(x => (x.PropertyType, x.Name))
-        .ToList();
-
-        RunTestWithOneType(blType, strategy, expected.ToArray());
-    }
-
-    #endregion
-    #region relation array
-
+public class ArrayTypeRelationStrategyTests : RelationStrategyTests
+{
     [Fact]
     public void Strategy_Replace2Id_Array_Test()
     {
-        var blType = typeof(TypeWithArrayRelation);
+        var relPropName = "WithId";
 
-        var expected = new[]
+        var classWORelation =
+            new ClassBuilder("TypeWithoutRelation")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .AddMember(CommonProperties.Description)
+            .Build();
+
+        var blClass =
+            new ClassBuilder("TypeWithRelation")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .AddMember(CommonProperties.Description)
+            .AddMember(new PropertyBuilder(relPropName, classWORelation.Name + "[]").Build())
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetRelationStrategy(RelationStrategy.ReplaceToIdProperty)
+            .SetNamespace(DtoNamespace)
+            .Build();
+
+        var expectedDtoProps = new PropertyDescriptor[]
         {
-            blType.GetProperty(nameof(TypeWithArrayRelation.Id)),
-            blType.GetProperty(nameof(TypeWithArrayRelation.Name)),
-            blType.GetProperty(nameof(TypeWithArrayRelation.Description)),
-            //blType.GetProperty(nameof(TypeWithArrayRelation.WithId)),
-        }
-        .Select(x => (x.PropertyType, x.Name))
-        .ToList();
+            new PropertyDescriptor(typeof(int), "Id"),
+            new PropertyDescriptor(typeof(string), "Name"),
+            new PropertyDescriptor(typeof(string), "Description"),
+            new PropertyDescriptor(typeof(int[]), relPropName + "Ids"),
+        };
 
-        expected.Add((typeof(long[]), nameof(TypeWithArrayRelation.WithId) + "Ids"));
-
-        RunTestWithOneType(blType, RelationStrategy.ReplaceToIdProperty, expected.ToArray());
+        RunWithBaseAssert(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
     }
 
     [Fact]
-    public void Stategy_AddId_Array_Test()
+    public void Strategy_AddId_Array_Test()
     {
-        var blType = typeof(TypeWithArrayRelation);
+        var relPropName = "WithId";
 
-        var expected = new[]
+        var classWORelation =
+            new ClassBuilder("TypeWithoutRelation")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .AddMember(CommonProperties.Description)
+            .Build();
+
+        var blClass =
+            new ClassBuilder("TypeWithRelation")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .AddMember(CommonProperties.Description)
+            .AddMember(new PropertyBuilder(relPropName, classWORelation.Name + "[]").Build())
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetRelationStrategy(RelationStrategy.AddIdProperty)
+            .SetNamespace(DtoNamespace)
+            .Build();
+
+        var relTypeDescr = new TypeDescriptor(classWORelation.Namespace, classWORelation.Name + "[]", TypeType.Array, new[] { new TypeDescriptor(classWORelation.Namespace, classWORelation.Name, TypeType.Simple, null) });
+
+        var expectedDtoProps = new PropertyDescriptor[]
         {
-            blType.GetProperty(nameof(TypeWithArrayRelation.Id)),
-            blType.GetProperty(nameof(TypeWithArrayRelation.Name)),
-            blType.GetProperty(nameof(TypeWithArrayRelation.Description)),
-            blType.GetProperty(nameof(TypeWithArrayRelation.WithId)),
-        }
-        .Select(x => (x.PropertyType, x.Name))
-        .ToList();
+            new PropertyDescriptor(typeof(int), "Id"),
+            new PropertyDescriptor(typeof(string), "Name"),
+            new PropertyDescriptor(typeof(string), "Description"),
+            new PropertyDescriptor(typeof(int[]), relPropName + "Ids"),
+            new PropertyDescriptor(relTypeDescr, relPropName),
+        };
 
-        expected.Add((typeof(long[]), nameof(TypeWithEnumerableRelation.WithId) + "Ids"));
-
-        RunTestWithOneType(blType, RelationStrategy.AddIdProperty, expected.ToArray());
+        RunWithBaseAssert(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
     }
 
     [Theory]
@@ -265,33 +357,181 @@ namespace AutoDto.Tests.Dto;
     [InlineData(RelationStrategy.AddIdProperty)]
     public void RelationWithoutId_Array_Test(RelationStrategy strategy)
     {
-        var blType = typeof(TypeWithArrayRelationWithoutId);
+        var relPropName = "WithoutId";
 
-        var expected = new[]
+        var classWOId =
+            new ClassBuilder("TypeWithoutId")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Name)
+            .AddMember(CommonProperties.Description)
+            .Build();
+
+        var blClass =
+            new ClassBuilder("TypeWithRelation")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .AddMember(CommonProperties.Description)
+            .AddMember(new PropertyBuilder(relPropName, classWOId.Name + "[]").Build())
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetRelationStrategy(strategy)
+            .SetNamespace(DtoNamespace)
+            .Build();
+
+        var relTypeDescr = new TypeDescriptor(classWOId.Namespace, classWOId.Name + "[]", TypeType.Array, new[] { new TypeDescriptor(classWOId.Namespace, classWOId.Name, TypeType.Simple, null) });
+        var expectedDtoProps = new PropertyDescriptor[]
         {
-            blType.GetProperty(nameof(TypeWithArrayRelationWithoutId.Id)),
-            blType.GetProperty(nameof(TypeWithArrayRelationWithoutId.Name)),
-            blType.GetProperty(nameof(TypeWithArrayRelationWithoutId.Description)),
-            blType.GetProperty(nameof(TypeWithArrayRelationWithoutId.WithoutId)),
-        }
-        .Select(x => (x.PropertyType, x.Name))
-        .ToList();
+            new PropertyDescriptor(typeof(int), "Id"),
+            new PropertyDescriptor(typeof(string), "Name"),
+            new PropertyDescriptor(typeof(string), "Description"),
+            new PropertyDescriptor(relTypeDescr, relPropName),
+        };
 
-        RunTestWithOneType(blType, strategy, expected.ToArray());
+        RunWithBaseAssert(new[] { classWOId, blClass }, dtoClass, expectedDtoProps);
+    }
+}
+
+public class EnumerableTypeRelationStrategyTests : RelationStrategyTests
+{
+    private string _enumerNamespace = typeof(IEnumerable<object>).Namespace;
+
+    [Theory]
+    [InlineData(nameof(IEnumerable<object>))]
+    [InlineData(nameof(List<object>))]
+    [InlineData(nameof(HashSet<object>))]
+    public void Strategy_Replace2Id_Collection_Test(string enumerName)
+    {
+        var relPropName = "WithId";
+
+        var classWORelation =
+            new ClassBuilder("TypeWithoutRelation")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .AddMember(CommonProperties.Description)
+            .Build();
+
+        var blClass =
+            new ClassBuilder("TypeWithRelation")
+            .SetNamespace(BlNamespace)
+            .AddUsing(_enumerNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .AddMember(CommonProperties.Description)
+            .AddMember(new PropertyBuilder(relPropName, $"{enumerName}<{classWORelation.Name}>").Build())
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetRelationStrategy(RelationStrategy.ReplaceToIdProperty)
+            .SetNamespace(DtoNamespace)
+            .Build();
+
+        var idEnumerTypeDescr = new TypeDescriptor(_enumerNamespace, enumerName + "`1", TypeType.Generic, new[] { new TypeDescriptor(typeof(int)) });
+        var expectedDtoProps = new PropertyDescriptor[]
+        {
+            new PropertyDescriptor(typeof(int), "Id"),
+            new PropertyDescriptor(typeof(string), "Name"),
+            new PropertyDescriptor(typeof(string), "Description"),
+            new PropertyDescriptor(idEnumerTypeDescr, relPropName + "Ids"),
+        };
+
+        RunWithBaseAssert(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
     }
 
-    #endregion
-
-    private void RunTestWithOneType(Type type, RelationStrategy strategy, (Type type, string name)[] expectedProps)
+    [Theory]
+    [InlineData(nameof(IEnumerable<object>))]
+    [InlineData(nameof(List<object>))]
+    [InlineData(nameof(HashSet<object>))]
+    public void Strategy_AddId_Collection_Test(string enumerName)
     {
-        var dto = new DtoData(type, strategy, "MyDto");
+        var relPropName = "WithId";
 
-        var compilation = RunForDtos(dto);
+        var classWORelation =
+            new ClassBuilder("TypeWithoutRelation")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .AddMember(CommonProperties.Description)
+            .Build();
 
-        var genClass = SyntaxChecker.FindClassByName(compilation, dto.DtoName);
+        var blClass =
+            new ClassBuilder("TypeWithRelation")
+            .SetNamespace(BlNamespace)
+            .AddUsing(_enumerNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .AddMember(CommonProperties.Description)
+            .AddMember(new PropertyBuilder(relPropName, $"{enumerName}<{classWORelation.Name}>").Build())
+            .Build();
 
-        var exp = expectedProps.Select(x => new PropertyDescriptor(new TypeDescriptor(x.type), x.name)); 
+        var dtoClass =
+            new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetRelationStrategy(RelationStrategy.AddIdProperty)
+            .SetNamespace(DtoNamespace)
+            .Build();
 
-        SyntaxChecker.TestOneClassDeclaration(genClass, exp);
+        var relTypeDecriptor = new TypeDescriptor(classWORelation.Namespace, classWORelation.Name, TypeType.Simple, null);
+        var intTypeDescriptor = new TypeDescriptor(typeof(int));
+        var idEnumerTypeDescr = new TypeDescriptor(_enumerNamespace, enumerName + "`1", TypeType.Generic, new[] { intTypeDescriptor });
+        var typeEnumerTypeDescr = new TypeDescriptor(_enumerNamespace, enumerName + "`1", TypeType.Generic, new[] { relTypeDecriptor });
+        var expectedDtoProps = new PropertyDescriptor[]
+        {
+            new PropertyDescriptor(typeof(int), "Id"),
+            new PropertyDescriptor(typeof(string), "Name"),
+            new PropertyDescriptor(typeof(string), "Description"),
+            new PropertyDescriptor(idEnumerTypeDescr, relPropName + "Ids"),
+            new PropertyDescriptor(typeEnumerTypeDescr, relPropName),
+        };
+
+        RunWithBaseAssert(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
+    }
+
+    [Theory]
+    [InlineData(RelationStrategy.None)]
+    [InlineData(RelationStrategy.ReplaceToIdProperty)]
+    [InlineData(RelationStrategy.AddIdProperty)]
+    public void RelationWithoutId_Collection_Test(RelationStrategy strategy)
+    {
+        var enumerName = nameof(IEnumerable<object>);
+        var relPropName = "WithoutId";
+
+        var classWOId =
+            new ClassBuilder("TypeWithoutId")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Name)
+            .AddMember(CommonProperties.Description)
+            .Build();
+
+        var blClass =
+            new ClassBuilder("TypeWithRelation")
+            .SetNamespace(BlNamespace)
+            .AddUsing(_enumerNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .AddMember(CommonProperties.Description)
+            .AddMember(new PropertyBuilder(relPropName, $"{enumerName}<{classWOId.Name}>").Build())
+            .Build();
+
+        var dtoClass =
+            new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass)
+            .SetRelationStrategy(strategy)
+            .SetNamespace(DtoNamespace)
+            .Build();
+
+        var relTypeDecriptor = new TypeDescriptor(classWOId.Namespace, classWOId.Name, TypeType.Simple, null);
+        var typeEnumerTypeDescr = new TypeDescriptor(_enumerNamespace, enumerName + "`1", TypeType.Generic, new[] { relTypeDecriptor });
+        var expectedDtoProps = new PropertyDescriptor[]
+        {
+            new PropertyDescriptor(typeof(int), "Id"),
+            new PropertyDescriptor(typeof(string), "Name"),
+            new PropertyDescriptor(typeof(string), "Description"),
+            new PropertyDescriptor(typeEnumerTypeDescr, relPropName),
+        };
+
+        RunWithBaseAssert(new[] { classWOId, blClass }, dtoClass, expectedDtoProps);
     }
 }
