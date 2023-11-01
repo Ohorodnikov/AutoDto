@@ -1,175 +1,156 @@
-﻿using AutoDto.Setup;
-using AutoDto.Tests.SyntaxGeneration.Models;
-using AutoDto.Tests.TestHelpers;
+﻿using AutoDto.Tests.TestHelpers.CodeBuilder.Builders;
+using AutoDto.Tests.TestHelpers.CodeBuilder.Elements;
 
 namespace AutoDto.Tests.SyntaxGeneration;
 
 public class NotCompiledBlTest : BaseCompilationErrorTests
 {
-    private const string _blName = "MyBl";
-    private const string _blNamespace = "AutoDto.Tests.Models";
-
-    private string GetValidDtoForBl()
-    {
-        var attr = typeof(DtoFromAttribute);
-
-        return $@"
-using {attr.Namespace};
-using {_blNamespace};
-
-namespace {DtoCodeCreator.DtoTypNamespace};
-
-[DtoFrom(typeof({_blName}))]
-public partial class MyDto
-{{ }}
-";
-    }
-
     [Fact]
     public void BrokenClassDeclarationTest()
     {
+        var blName = "MyBl";
         var blModel = @$"
-namespace {_blNamespace};
+namespace {BlNamespace};
 
-public cla {_blName} // incorrect 'class' word
+public cla {blName} // incorrect 'class' word
 {{
     public int Id {{ get; set; }}
     public string Name {{ get; set; }}
 }}
 ";
 
-        AssertGeneratorWasNotRun(blModel, GetValidDtoForBl());
+        var dto =
+            new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, blName, BlNamespace)
+            .SetNamespace(DtoNamespace)
+            .Build();
+
+        AssertGeneratorWasNotRun(blModel, dto.GenerateCode());
     }
 
     [Fact]
     public void BrokenMethodDeclarationTest()
     {
-        var blModel = @$"
-namespace {_blNamespace};
+        var bl = new ClassBuilder("MyBl")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .AddMember(new MethodMember("publ void MyMethod() {}"))
+            .Build();
 
-public class {_blName}
-{{
-    public int Id {{ get; set; }}
-    public string Name {{ get; set; }}
+        var dto = new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, bl)
+            .SetNamespace(DtoNamespace)
+            .Build();
 
-    publ void MyMethod() //incorrect 'public' word
-    {{
-    
-    }}
-}}
-";
-        AssertGeneratorWasNotRun(blModel, GetValidDtoForBl());
+        AssertGeneratorWasNotRun(bl.GenerateCode(), dto.GenerateCode());
     }
 
     [Fact]
     public void BrokenPropertyDeclarationTest()
     {
-        var blModel = @$"
-namespace {_blNamespace};
+        var bl = new ClassBuilder("MyBl")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .AddMember(new PropertyMember("public int Id2 { get; set }")) //missing ;
+            .Build();
 
-public class {_blName}
-{{
-    public int Id {{ get; set }} //missing ;
-    public string Name {{ get; set; }}
+        var dto = new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, bl)
+            .SetNamespace(DtoNamespace)
+            .Build();
 
-    public void MyMethod()
-    {{
-    
-    }}
-}}
-";
-        AssertGeneratorWasNotRun(blModel, GetValidDtoForBl());
+        AssertGeneratorWasNotRun(bl.GenerateCode(), dto.GenerateCode());
     }
 
     [Fact]
     public void BrokenMethodContentTest()
     {
-        var blModel = @$"
-namespace {_blNamespace};
+        var brokenMethod =
+            new MethodBuilder("MyMethod", typeof(void))
+            .SetBody("var q = 5.SomeMethod();")
+            .Build();
 
-public class {_blName}
-{{
-    public int Id {{ get; set; }}
-    public string Name {{ get; set; }}
+        var bl = new ClassBuilder("MyBl")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .AddMember(brokenMethod)
+            .Build();
 
-    public void MyMethod()
-    {{
-        var q = 5.SomeMethod();
-    }}
-}}
-";
-        AssertGeneratorWasRunNTimes(1, 1, blModel, GetValidDtoForBl());
+        var dto = new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, bl)
+            .SetNamespace(DtoNamespace)
+            .Build();
+
+        AssertGeneratorWasRunNTimes(1, 1, bl.GenerateCode(), dto.GenerateCode());
     }
 
     [Fact]
     public void NotImplementedInterfaceTest()
     {
         var interf = $@"
-namespace {_blNamespace};
+namespace {BlNamespace};
 
 public interface ITest
 {{
-    int Id {{ get; set; }}
+    int SomeProp {{ get; set; }}
 }}
 ";
+        var bl = new ClassBuilder("MyBl")
+            .SetNamespace(BlNamespace)
+            .AddBase("ITest")
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .Build();
 
-        var blModel = $@"
-namespace {_blNamespace};
+        var dto = new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, bl)
+            .SetNamespace(DtoNamespace)
+            .Build();
 
-public class {_blName} : ITest //Not implemented
-{{
-    public string Name {{ get; set; }}
-}}
-";
-
-        AssertGeneratorWasNotRun(interf, blModel, GetValidDtoForBl());
+        AssertGeneratorWasNotRun(interf, bl.GenerateCode(), dto.GenerateCode());
     }
 
     [Fact]
     public void BrokenInheritanceDeclarationTest()
     {
-        var blModelBase = $@"
-namespace {_blNamespace};
+        var blBase =
+            new ClassBuilder("BlBase")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .Build();
 
-public class BaseBl
-{{
-    public int Id {{ get; set; }}
-}}
-";
+        var bl = new ClassBuilder("MyBl")
+            .SetNamespace(BlNamespace)
+            .AddBase(blBase)
+            .AddBase(" ")
+            .AddMember(CommonProperties.Name)
+            .Build();
 
-        var blModel = $@"
-namespace {_blNamespace};
+        var dto = new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, bl)
+            .SetNamespace(DtoNamespace)
+            .Build();
 
-public class {_blName} : BaseBl, //Invalid ,
-{{
-    public string Name {{ get; set; }}
-}}
-";
-
-        AssertGeneratorWasNotRun(blModelBase, blModel, GetValidDtoForBl());
+        AssertGeneratorWasNotRun(blBase.GenerateCode(), bl.GenerateCode(), dto.GenerateCode());
     }
 
     [Fact]
     public void BrokenBaseBlTest()
     {
-        var blModelBase = $@"
-namespace {_blNamespace};
+        var blBase =
+            new ClassBuilder("BlBase")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(new PropertyMember("public int Id2 { get; se }")) //missing t;
+            .Build();
 
-public class BaseBl
-{{
-    public int Id {{ get; se }} //missing t;
-}}
-";
+        var bl = new ClassBuilder("MyBl")
+            .SetNamespace(BlNamespace)
+            .AddBase(blBase)
+            .AddMember(CommonProperties.Name)
+            .Build();
 
-        var blModel = $@"
-namespace {_blNamespace};
+        var dto = new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, bl)
+            .SetNamespace(DtoNamespace)
+            .Build();
 
-public class {_blName} : BaseBl
-{{
-    public string Name {{ get; set; }}
-}}
-";
-
-        AssertGeneratorWasNotRun(blModelBase, blModel, GetValidDtoForBl());
+        AssertGeneratorWasNotRun(blBase.GenerateCode(), bl.GenerateCode(), dto.GenerateCode());
     }
 }
