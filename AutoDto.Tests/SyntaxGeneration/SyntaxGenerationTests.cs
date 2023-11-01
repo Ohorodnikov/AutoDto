@@ -1,15 +1,11 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using AutoDto.Tests.SyntaxGeneration.Models;
-using static AutoDto.Tests.TestHelpers.DtoCodeCreator;
+﻿using AutoDto.SourceGen.DiagnosticMessages.Errors;
 using AutoDto.Tests.TestHelpers;
-using AutoDto.SourceGen.DiagnosticMessages.Errors;
+using AutoDto.Tests.TestHelpers.CodeBuilder.Builders;
+using AutoDto.Tests.TestHelpers.CodeBuilder.Elements;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Collections.Immutable;
 
 namespace AutoDto.Tests.SyntaxGeneration;
 
@@ -18,79 +14,121 @@ public class SyntaxGenerationTests : BaseUnitTest
     private record SyntaxData(string Namespace, string ClassName, SyntaxKind Access);
 
     [Fact]
-    public void DtoClassNotPatrial()
+    public void DtoClassNotPartial()
     {
-        var type = typeof(SimpleType);
-        var attr = DtoCreator.GetDtoFromAttr(type);
+        var bl =
+            new ClassBuilder("MyBl")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .Build();
 
-        var code = $@"
-using {type.Namespace};
-using {attr.nameSpace};
+        var dto =
+            new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, bl)
+            .SetNamespace(DtoNamespace)
+            .SetPartial(false)
+            .Build();
 
-namespace {DtoCodeCreator.DtoTypNamespace};
-
-{attr.definition}
-public class MyDto
-{{ }}
-";
-
-        var (compilations, msgs) = Generator.RunWithMsgs(code);
-
-        Assert.Single(compilations.SyntaxTrees);
-
-        Assert.Single(msgs);
-        var msg = msgs[0];
-
-        var exp = new DtoNotPartialError("MyDto");
-        Assert.Equal(DiagnosticSeverity.Error, msg.Severity);
-        Assert.Equal(exp.Id, msg.Id);
-    }
-
-    [Theory]
-    [InlineData(typeof(SimpleType), SyntaxKind.PublicKeyword)]
-    [InlineData(typeof(SimpleType), SyntaxKind.InternalKeyword)]
-    [InlineData(typeof(EmptyType), SyntaxKind.PublicKeyword)]
-    public void OneFileDtoSyntaxTest(Type type, SyntaxKind access)
-    {
-        var attr = DtoCreator.GetDtoFromAttr(type);
-        var data = new SyntaxData(DtoCodeCreator.DtoTypNamespace, type.Name + "Dto", access);
-        var dtoData1 = new DtoData(type, Setup.RelationStrategy.None, data.ClassName, null, data.Access);
-
-        var compilation = RunForDtos(dtoData1);
-
-        var trees = compilation.SyntaxTrees;
-
-        Assert.Equal(2, trees.Count());
-
-        CheckOneFile(trees.Last(), data);
-    }
-
-    [Theory]
-    [InlineData(SyntaxKind.PublicKeyword, SyntaxKind.PublicKeyword)]
-    [InlineData(SyntaxKind.PublicKeyword, SyntaxKind.InternalKeyword)]
-    [InlineData(SyntaxKind.InternalKeyword, SyntaxKind.PublicKeyword)]
-    [InlineData(SyntaxKind.InternalKeyword, SyntaxKind.InternalKeyword)]
-    public void ManyDtosInOneFileSyntaxTest(SyntaxKind access1, SyntaxKind access2)
-    {
-        var type = typeof(SimpleType);
-        var attr = DtoCreator.GetDtoFromAttr(type);
-        var data = new[]
+        RunWithAssert(new[] { bl, dto }, DoAssert);
+        void DoAssert(Compilation compilation, ImmutableArray<Diagnostic> msgs)
         {
-            new SyntaxData(DtoCodeCreator.DtoTypNamespace, type.Name + "Dto1", access1),
-            new SyntaxData(DtoCodeCreator.DtoTypNamespace, type.Name + "Dto2", access2)
+            Assert.Single(msgs);
+            var msg = msgs[0];
+
+            var exp = new DtoNotPartialError(dto.Name);
+            Assert.Equal(DiagnosticSeverity.Error, msg.Severity);
+            Assert.Equal(exp.Id, msg.Id);
+
+            var generated = SyntaxChecker.FindAllClassDeclarationsByName(compilation, dto.Name)
+                .Skip(1)
+                .FirstOrDefault();
+
+            Assert.Null(generated);
+        }
+    }
+
+    [Theory]
+    [InlineData(Visibility.Public)]
+    [InlineData(Visibility.Internal)]
+    public void OneFileDtoSyntaxTest(Visibility visibility)
+    {
+        var bl =
+            new ClassBuilder("MyBl")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .Build();
+
+        var dto =
+            new DtoClassBuilder("MyDto", DtoClassBuilder.DtoAttributeType.DtoFrom, bl)
+            .SetNamespace(DtoNamespace)
+            .SetAccessor(visibility)
+            .Build();
+
+        RunWithAssert(new[] { bl, dto }, DoAssert);
+        void DoAssert(Compilation compilation, ImmutableArray<Diagnostic> msgs)
+        {
+            Assert.Empty(msgs);
+            TestOneFile(compilation, dto);
+        }
+    }
+
+    [Theory]
+    [InlineData(Visibility.Public, Visibility.Public)]
+    [InlineData(Visibility.Public, Visibility.Internal)]
+    [InlineData(Visibility.Internal, Visibility.Public)]
+    [InlineData(Visibility.Internal, Visibility.Internal)]
+    public void ManyDtosInOneFileSyntaxTest(Visibility access1, Visibility access2)
+    {
+        var bl =
+            new ClassBuilder("MyBl")
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .Build();
+
+        var dto1 =
+            new DtoClassBuilder("MyDto1", DtoClassBuilder.DtoAttributeType.DtoFrom, bl)
+            .SetNamespace(DtoNamespace)
+            .SetAccessor(access1)
+            .Build();
+
+        var dto2 =
+            new DtoClassBuilder("MyDto2", DtoClassBuilder.DtoAttributeType.DtoFrom, bl)
+            .SetNamespace(DtoNamespace)
+            .SetAccessor(access2)
+            .Build();
+
+        RunWithAssert(new[] { bl, dto1, dto2 }, DoAssert);
+        void DoAssert(Compilation compilation, ImmutableArray<Diagnostic> msgs)
+        {
+            Assert.Empty(msgs);
+
+            TestOneFile(compilation, dto1);
+            TestOneFile(compilation, dto2);
+        }
+    }
+
+    private void TestOneFile(Compilation compilation, ClassElement dto)
+    {
+        var generated = SyntaxChecker.FindAllClassDeclarationsByName(compilation, dto.Name)
+                .Skip(1)
+                .Single();
+
+        var accessKeyword = Visibility2SyntaxKind(dto.Visibility);
+
+        var expected = new SyntaxData(dto.Namespace, dto.Name, accessKeyword);
+
+        CheckOneFile(generated.SyntaxTree, expected);
+    }
+
+    private SyntaxKind Visibility2SyntaxKind(Visibility visibility)
+    {
+        return visibility switch
+        {
+            Visibility.Public => SyntaxKind.PublicKeyword,
+            Visibility.Internal => SyntaxKind.InternalKeyword,
+            _ => throw new NotImplementedException()
         };
-
-        var dtoData1 = new DtoData(type, Setup.RelationStrategy.None, data[0].ClassName, null, data[0].Access);
-        var dtoData2 = new DtoData(type, Setup.RelationStrategy.None, data[1].ClassName, null, data[1].Access);
-
-        var compilation = RunForDtos(dtoData1, dtoData2);
-
-        var trees = compilation.SyntaxTrees.ToList();
-
-        Assert.Equal(3, trees.Count());
-
-        for (int i = 1; i < trees.Count(); i++)
-            CheckOneFile(trees[i], data[i - 1]);
     }
 
     private void CheckOneFile(SyntaxTree syntaxTree, SyntaxData expectedData)
@@ -98,7 +136,7 @@ public class MyDto
         var ns = AssertNamespace(syntaxTree, expectedData.Namespace);
 
         var cl = AssertClass(ns, expectedData.ClassName, expectedData.Access);
-        
+
         AssertProperties(cl);
     }
 
