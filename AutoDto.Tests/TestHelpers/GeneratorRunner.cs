@@ -1,15 +1,10 @@
 ﻿using AutoDto.Setup;
 using AutoDto.SourceGen;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis;
-using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using AutoDto.Tests.TestHelpers.CodeBuilder.Elements;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using System.Collections.Immutable;
+using System.Reflection;
 
 namespace AutoDto.Tests.TestHelpers;
 
@@ -20,35 +15,10 @@ public class GeneratorRunner
 
     public (Compilation compilation, ImmutableArray<Diagnostic> compileMsgs) Run(IEnumerable<ClassElement> classes, IEnumerable<MetadataReference> extraRefs = null)
     {
-        extraRefs ??= new List<MetadataReference>();
-        var systemAssemblyRefs = GetSystemRefs();
-        var commonRefs = GetCommonRefs();
-
-        var allRefs = systemAssemblyRefs.Union(commonRefs).Union(extraRefs);
-
-        var compilation = CSharpCompilation.Create(
-        "MyCompilation",
-            syntaxTrees: classes.Select(clss => CSharpSyntaxTree.ParseText(clss.GenerateCode(), path: Guid.NewGuid().ToString() + ".cs")).ToList(),
-            references: allRefs,
-            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
-
-        if (CheckInputCompilation)
-            Compile(compilation); //to see compile errs if any in code
-
-        var driver = CSharpGeneratorDriver.Create(new[] { new DtoFromBlGenerator(true, OnApplyGenerator) });
-
-        driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
-
-        return (outputCompilation, diagnostics);
+        return Run(classes.Select(x => x.GenerateCode()), extraRefs);
     }
 
-
-    public Compilation Run(string code, IEnumerable<MetadataReference> extraRefs = null)
-    {
-        return RunWithMsgs(code, extraRefs).compilation;
-    }
-
-    public (Compilation compilation, ImmutableArray<Diagnostic> compileMsgs) RunWithMsgs(IEnumerable<string> codes, IEnumerable<MetadataReference> extraRefs = null)
+    public (Compilation compilation, ImmutableArray<Diagnostic> compileMsgs) Run(IEnumerable<string> codes, IEnumerable<MetadataReference> extraRefs = null)
     {
         extraRefs ??= new List<MetadataReference>();
         var systemAssemblyRefs = GetSystemRefs();
@@ -70,11 +40,6 @@ public class GeneratorRunner
         driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
 
         return (outputCompilation, diagnostics);
-    }
-
-    public (Compilation compilation, ImmutableArray<Diagnostic> compileMsgs) RunWithMsgs(string code, IEnumerable<MetadataReference> extraRefs = null)
-    {
-        return RunWithMsgs(new[] {code}, extraRefs);
     }
 
     public IEnumerable<MetadataReference> GetSystemRefs()
@@ -109,7 +74,7 @@ public class GeneratorRunner
         };
 
         foreach (var lib in libs)
-            returnList.Add(MetadataReference.CreateFromFile(Path.Combine(assemblyPath,lib)));
+            returnList.Add(MetadataReference.CreateFromFile(Path.Combine(assemblyPath, lib)));
 
         return returnList;
     }

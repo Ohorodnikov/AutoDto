@@ -206,7 +206,7 @@ public class SimpleTypeRelationStrategyTests : BaseRelationStrategyTest
             new PropertyDescriptor(new TypeDescriptor(classWORelation.Namespace, classWORelation.Name, TypeType.Simple, null), relPropName),
         };
 
-        TestGeneratedDtoForExpectedProps(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
+        TestGeneratedDtoForExpectedProps(new[] { baseBl, classWORelation, blClass }, dtoClass, expectedDtoProps);
     }
 
     [Theory]

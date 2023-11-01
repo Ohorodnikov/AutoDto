@@ -1,4 +1,6 @@
-﻿namespace AutoDto.Tests.SyntaxGeneration;
+﻿using AutoDto.Tests.TestHelpers;
+
+namespace AutoDto.Tests.SyntaxGeneration;
 
 public class BaseCompilationErrorTests : BaseUnitTest
 {
@@ -13,9 +15,13 @@ public class BaseCompilationErrorTests : BaseUnitTest
             Interlocked.Increment(ref i);
         }
 
-        var gen = GetGeneratorConfigured(false, CalculateExecCount);
+        var gen = new GeneratorRunner
+        {
+            CheckInputCompilation = false,
+            OnApplyGenerator = CalculateExecCount
+        };
 
-        var (compilations, msgs) = gen.RunWithMsgs(classCodes);
+        var (compilations, msgs) = gen.Run(classCodes);
 
         Assert.Equal(n, i);
 

@@ -88,10 +88,10 @@ public class BlInstanceMemberTests : BaseMemberTests
             CommonProperties.Id_Int,
             CommonProperties.Name,
 
-            new MethodBuilder("PrivateMethod", typeof(string)).SetAccessor(Visibility.Private).Build(),
-            new MethodBuilder("ProtectedMethod", typeof(string)).SetAccessor(Visibility.Protected).Build(),
-            new MethodBuilder("InternalMethod", typeof(string)).SetAccessor(Visibility.Internal).Build(),
-            new MethodBuilder("PublicMethod", typeof(string)).SetAccessor(Visibility.Public).Build()
+            new MethodBuilder("PrivateMethod", typeof(void)).SetAccessor(Visibility.Private).Build(),
+            new MethodBuilder("ProtectedMethod", typeof(void)).SetAccessor(Visibility.Protected).Build(),
+            new MethodBuilder("InternalMethod", typeof(void)).SetAccessor(Visibility.Internal).Build(),
+            new MethodBuilder("PublicMethod", typeof(void)).SetAccessor(Visibility.Public).Build()
         };
 
         var expectedDtoMembers = new[]
@@ -223,10 +223,10 @@ public class BlStaticMemberTests : BaseMemberTests
             CommonProperties.Id_Int,
             CommonProperties.Name,
 
-            new MethodBuilder("PrivateMethod", typeof(string)).SetAccessor(Visibility.Private).SetStatic().Build(),
-            new MethodBuilder("ProtectedMethod", typeof(string)).SetAccessor(Visibility.Protected).SetStatic().Build(),
-            new MethodBuilder("InternalMethod", typeof(string)).SetAccessor(Visibility.Internal).SetStatic().Build(),
-            new MethodBuilder("PublicMethod", typeof(string)).SetAccessor(Visibility.Public).SetStatic().Build()
+            new MethodBuilder("PrivateMethod", typeof(void)).SetAccessor(Visibility.Private).SetStatic().Build(),
+            new MethodBuilder("ProtectedMethod", typeof(void)).SetAccessor(Visibility.Protected).SetStatic().Build(),
+            new MethodBuilder("InternalMethod", typeof(void)).SetAccessor(Visibility.Internal).SetStatic().Build(),
+            new MethodBuilder("PublicMethod", typeof(void)).SetAccessor(Visibility.Public).SetStatic().Build()
         };
 
         var expectedDtoMembers = new[]

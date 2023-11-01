@@ -282,7 +282,7 @@ public class GeneratedFromBlWithHierarchyTests : BaseUnitTest
             .SetNamespace(DtoNamespace)
             .Build();
 
-        RunWithAssert(classes, DoAssert);
+        RunWithAssert(classes.Append(dtoClass), DoAssert);
 
         void DoAssert(Compilation compilation, ImmutableArray<Diagnostic> msgs)
         {

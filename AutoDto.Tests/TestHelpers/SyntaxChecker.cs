@@ -1,14 +1,8 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Reflection;
+﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using System.Diagnostics.Metrics;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Diagnostics;
+using System.Reflection;
 
 namespace AutoDto.Tests.TestHelpers;
 
@@ -62,16 +56,16 @@ public class SyntaxChecker
     }
 
     [DebuggerDisplay($"{{{nameof(GetDebuggerDisplay)}(),nq}}")]
-    public class PropertyDescriptor 
+    public class PropertyDescriptor
     {
-        public PropertyDescriptor(PropertyInfo propertyInfo) 
+        public PropertyDescriptor(PropertyInfo propertyInfo)
             : this(new TypeDescriptor(propertyInfo.PropertyType), propertyInfo.Name)
-        { 
+        {
         }
 
-        public PropertyDescriptor(Type returnType, string name) 
-            : this (new TypeDescriptor(returnType), name) 
-        { 
+        public PropertyDescriptor(Type returnType, string name)
+            : this(new TypeDescriptor(returnType), name)
+        {
         }
 
         public PropertyDescriptor(TypeDescriptor type, string name)
@@ -87,18 +81,6 @@ public class SyntaxChecker
         {
             return $"{Type.GetDebuggerDisplay()} {Name}";
         }
-    }
-
-    public ClassDeclarationSyntax FindClassByName(Compilation compilation, string className)
-    {
-        var roots = compilation.SyntaxTrees.Select(x => x.GetRoot()).ToList();
-
-        var @class = roots
-            .Skip(1)
-            .SelectMany(x => x.DescendantNodesAndSelf().OfType<ClassDeclarationSyntax>())
-            .SingleOrDefault(x => x.Identifier.Text == className);
-
-        return @class;
     }
 
     public IEnumerable<ClassDeclarationSyntax> FindAllClassDeclarationsByName(Compilation compilation, string className)
@@ -148,7 +130,7 @@ public class SyntaxChecker
         }
     }
 
-    private void ChectTypeNameAndNamespace(QualifiedNameSyntax nameSyntax, TypeDescriptor expType)
+    private void CheckTypeNameAndNamespace(QualifiedNameSyntax nameSyntax, TypeDescriptor expType)
     {
         Assert.Equal(expType.Namespace, nameSyntax.Left.ToFullString().Trim());
 
@@ -162,7 +144,7 @@ public class SyntaxChecker
 
     private void CheckQualifiedNameSyntax(QualifiedNameSyntax nameSyntax, TypeDescriptor expType)
     {
-        ChectTypeNameAndNamespace(nameSyntax, expType);
+        CheckTypeNameAndNamespace(nameSyntax, expType);
 
         if (nameSyntax.Right is not GenericNameSyntax genericSyntax)
             return;
