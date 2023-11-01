@@ -3,26 +3,9 @@ using AutoDto.Tests.TestHelpers.CodeBuilder.Builders;
 using AutoDto.Tests.TestHelpers.CodeBuilder.Elements;
 using static AutoDto.Tests.TestHelpers.SyntaxChecker;
 
-namespace AutoDto.Tests.SourceGeneration;
+namespace AutoDto.Tests.SourceGeneration.RelationStrategyTests;
 
-public class RelationStrategyTests : BaseUnitTest
-{
-    protected void RunWithBaseAssert(IEnumerable<ClassElement> blClasses, ClassElement dtoClass, PropertyDescriptor[] expectedPropsInDto)
-    {
-        RunWithAssert(blClasses.Append(dtoClass), (compilation, msgs) =>
-        {
-            Assert.Empty(msgs);
-
-            var generatedClass = SyntaxChecker.FindAllClassDeclarationsByName(compilation, dtoClass.Name)
-                    .Skip(1) //skip declaration to get only generated
-                    .Single();
-
-            SyntaxChecker.TestOneClassDeclaration(generatedClass, expectedPropsInDto);
-        });
-    }
-}
-
-public class SimpleTypeRelationStrategyTests : RelationStrategyTests
+public class SimpleTypeRelationStrategyTests : BaseRelationStrategyTest
 {
     [Fact]
     public void Strategy_NotSet_Test()
@@ -62,7 +45,7 @@ public class SimpleTypeRelationStrategyTests : RelationStrategyTests
             new PropertyDescriptor(new TypeDescriptor(classWORelation.Namespace, classWORelation.Name, TypeType.Simple, null), relPropName),
         };
 
-        RunWithBaseAssert(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
+        TestGeneratedDtoForExpectedProps(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
     }
 
     [Fact]
@@ -101,7 +84,7 @@ public class SimpleTypeRelationStrategyTests : RelationStrategyTests
             new PropertyDescriptor(new TypeDescriptor(classWORelation.Namespace, classWORelation.Name, TypeType.Simple, null), relPropName),
         };
 
-        RunWithBaseAssert(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
+        TestGeneratedDtoForExpectedProps(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
     }
 
     [Fact]
@@ -140,7 +123,7 @@ public class SimpleTypeRelationStrategyTests : RelationStrategyTests
             new PropertyDescriptor(typeof(int), relPropName + "Id"),
         };
 
-        RunWithBaseAssert(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
+        TestGeneratedDtoForExpectedProps(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
     }
 
     [Fact]
@@ -180,7 +163,7 @@ public class SimpleTypeRelationStrategyTests : RelationStrategyTests
             new PropertyDescriptor(new TypeDescriptor(classWORelation.Namespace, classWORelation.Name, TypeType.Simple, null), relPropName),
         };
 
-        RunWithBaseAssert(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
+        TestGeneratedDtoForExpectedProps(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
     }
 
     [Fact]
@@ -223,7 +206,7 @@ public class SimpleTypeRelationStrategyTests : RelationStrategyTests
             new PropertyDescriptor(new TypeDescriptor(classWORelation.Namespace, classWORelation.Name, TypeType.Simple, null), relPropName),
         };
 
-        RunWithBaseAssert(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
+        TestGeneratedDtoForExpectedProps(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
     }
 
     [Theory]
@@ -264,11 +247,11 @@ public class SimpleTypeRelationStrategyTests : RelationStrategyTests
             new PropertyDescriptor(new TypeDescriptor(classWOId.Namespace, classWOId.Name, TypeType.Simple, null), relPropName),
         };
 
-        RunWithBaseAssert(new[] { classWOId, blClass }, dtoClass, expectedDtoProps);
+        TestGeneratedDtoForExpectedProps(new[] { classWOId, blClass }, dtoClass, expectedDtoProps);
     }
 }
 
-public class ArrayTypeRelationStrategyTests : RelationStrategyTests
+public class ArrayTypeRelationStrategyTests : BaseRelationStrategyTest
 {
     [Fact]
     public void Strategy_Replace2Id_Array_Test()
@@ -306,7 +289,7 @@ public class ArrayTypeRelationStrategyTests : RelationStrategyTests
             new PropertyDescriptor(typeof(int[]), relPropName + "Ids"),
         };
 
-        RunWithBaseAssert(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
+        TestGeneratedDtoForExpectedProps(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
     }
 
     [Fact]
@@ -348,7 +331,7 @@ public class ArrayTypeRelationStrategyTests : RelationStrategyTests
             new PropertyDescriptor(relTypeDescr, relPropName),
         };
 
-        RunWithBaseAssert(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
+        TestGeneratedDtoForExpectedProps(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
     }
 
     [Theory]
@@ -390,11 +373,11 @@ public class ArrayTypeRelationStrategyTests : RelationStrategyTests
             new PropertyDescriptor(relTypeDescr, relPropName),
         };
 
-        RunWithBaseAssert(new[] { classWOId, blClass }, dtoClass, expectedDtoProps);
+        TestGeneratedDtoForExpectedProps(new[] { classWOId, blClass }, dtoClass, expectedDtoProps);
     }
 }
 
-public class EnumerableTypeRelationStrategyTests : RelationStrategyTests
+public class EnumerableTypeRelationStrategyTests : BaseRelationStrategyTest
 {
     private string _enumerNamespace = typeof(IEnumerable<object>).Namespace;
 
@@ -439,7 +422,7 @@ public class EnumerableTypeRelationStrategyTests : RelationStrategyTests
             new PropertyDescriptor(idEnumerTypeDescr, relPropName + "Ids"),
         };
 
-        RunWithBaseAssert(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
+        TestGeneratedDtoForExpectedProps(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
     }
 
     [Theory]
@@ -487,7 +470,7 @@ public class EnumerableTypeRelationStrategyTests : RelationStrategyTests
             new PropertyDescriptor(typeEnumerTypeDescr, relPropName),
         };
 
-        RunWithBaseAssert(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
+        TestGeneratedDtoForExpectedProps(new[] { classWORelation, blClass }, dtoClass, expectedDtoProps);
     }
 
     [Theory]
@@ -532,6 +515,6 @@ public class EnumerableTypeRelationStrategyTests : RelationStrategyTests
             new PropertyDescriptor(typeEnumerTypeDescr, relPropName),
         };
 
-        RunWithBaseAssert(new[] { classWOId, blClass }, dtoClass, expectedDtoProps);
+        TestGeneratedDtoForExpectedProps(new[] { classWOId, blClass }, dtoClass, expectedDtoProps);
     }
 }

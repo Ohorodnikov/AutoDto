@@ -1,13 +1,8 @@
-﻿using AutoDto.Tests.SourceGeneration.Models;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using System.Reflection;
-using static AutoDto.Tests.TestHelpers.DtoCodeCreator;
-using static AutoDto.Tests.TestHelpers.SyntaxChecker;
-using AutoDto.Tests.TestHelpers.CodeBuilder.Builders;
+﻿using AutoDto.Tests.TestHelpers.CodeBuilder.Builders;
 using AutoDto.Tests.TestHelpers.CodeBuilder.Elements;
+using Microsoft.CodeAnalysis;
 using System.Collections.Immutable;
+using static AutoDto.Tests.TestHelpers.SyntaxChecker;
 
 namespace AutoDto.Tests.SourceGeneration;
 
@@ -20,7 +15,7 @@ public class BaseMemberTests : BaseUnitTest
             .AddMembers(blMembers)
             .Build();
 
-        var dtoClass = 
+        var dtoClass =
             new DtoClassBuilder("MemberTestsDto", DtoClassBuilder.DtoAttributeType.DtoFrom, blClass.Name, blClass.Namespace)
             .SetNamespace(DtoNamespace)
             .Build();
@@ -43,7 +38,7 @@ public class BlInstanceMemberTests : BaseMemberTests
     [Fact]
     public void Instance_IgnoreNonPublicPropertiesTest()
     {
-        var blMembers = new Member[] 
+        var blMembers = new Member[]
         {
             CommonProperties.Id_Int,
             CommonProperties.Name,
