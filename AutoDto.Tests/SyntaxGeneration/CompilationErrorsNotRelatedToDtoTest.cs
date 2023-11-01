@@ -1,107 +1,89 @@
-﻿using AutoDto.Setup;
-using AutoDto.Tests.TestHelpers;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using AutoDto.Tests.TestHelpers.CodeBuilder.Builders;
+using AutoDto.Tests.TestHelpers.CodeBuilder.Elements;
 
 namespace AutoDto.Tests.SyntaxGeneration;
 
 public class CompilationErrorsNotRelatedToDtoTest : BaseCompilationErrorTests
 {
-    private const string _blName = "MyBl";
-    private const string _blNamespace = "AutoDto.Tests.Models";
-
-    private string GetValidDtoForBl(string dtoName = "MyDto")
+    private ClassElement GetValidDtoForBl(string blName, string dtoName = "MyDto")
     {
-        var attr = typeof(DtoFromAttribute);
-
-        return $@"
-using {attr.Namespace};
-using {_blNamespace};
-
-namespace {DtoCodeCreator.DtoTypNamespace};
-
-[DtoFrom(typeof({_blName}))]
-public partial class {dtoName}
-{{ }}
-";
+        return
+            new DtoClassBuilder(dtoName, DtoClassBuilder.DtoAttributeType.DtoFrom, blName)
+            .SetNamespace(DtoNamespace)
+            .AddUsing(BlNamespace)
+            .Build();
     }
 
-    private string GetValidBl()
+    private ClassElement GetValidBl(string blName)
     {
-        var blModel = @$"
-namespace {_blNamespace};
+        return new ClassBuilder(blName)
+            .SetNamespace(BlNamespace)
+            .AddMember(CommonProperties.Id_Int)
+            .AddMember(CommonProperties.Name)
+            .Build();
+    }
 
-public class {_blName}
-{{
-    public int Id {{ get; set; }}
-    public string Name {{ get; set; }}
-}}
-";
-
-        return blModel;
+    private ClassElement GetClassWithCompilationError()
+    {
+        return
+            new ClassBuilder("ClassWithError")
+            .SetNamespace("SomeNamespace")
+            .AddMember(new MethodMember("public voi SomeMethod() { }"))
+            .Build();
     }
 
     [Fact]
     public void CompilationErrorInFileWithOneDto()
     {
-        var dtoFileContent = $@"
-{GetValidDtoForBl()}
+        var bl = GetValidBl("BlClass");
+        var dto = GetValidDtoForBl(bl.Name);
+        var classWithErr = GetClassWithCompilationError();
 
-public class SomeOtherClass
-{{
-    public voi SomeMethod() {{ }} //wrong 'void'
-}}
-";
+        var dtoFileContent = dto.GenerateCode() + Environment.NewLine + classWithErr.GenerateCode();
 
-        AssertGeneratorWasRunNTimes(1, 1, GetValidBl(), dtoFileContent);
+        AssertGeneratorWasRunNTimes(1, 1, bl.GenerateCode(), dtoFileContent);
     }
 
     [Fact]
     public void CompilationErrorInFileWithManyDto()
     {
-        var dtoFileContent = $@"
-{GetValidDtoForBl("Dto1")}
+        var bl1 = GetValidBl("Bl1");
+        var bl2 = GetValidBl("Bl2");
 
-[DtoFrom(typeof({_blName}))]
-public partial class Dto2
-{{ }}
+        var dto1 = GetValidDtoForBl(bl1.Name, "Dto1");
+        var dto2 = GetValidDtoForBl(bl2.Name, "Dto2");
+        var classWithErr = GetClassWithCompilationError();
 
-public class SomeOtherClass
-{{
-    public voi SomeMethod() {{ }} //wrong 'void'
-}}
-";
+        var dtoFileContent =
+            dto1.GenerateCode() +
+            Environment.NewLine +
+            dto2.GenerateCode() +
+            Environment.NewLine +
+            classWithErr.GenerateCode()
+            ;
 
-        AssertGeneratorWasRunNTimes(1, 2, GetValidBl(), dtoFileContent);
+        AssertGeneratorWasRunNTimes(1, 2, bl1.GenerateCode(), bl2.GenerateCode(), dtoFileContent);
     }
 
     [Fact]
-    public void CompilationErrorInFileWithBl() 
+    public void CompilationErrorInFileWithBl()
     {
-        var blFileContent = $@"
-{GetValidBl()}
+        var bl = GetValidBl("BlClass");
+        var dto = GetValidDtoForBl(bl.Name);
+        var classWithErr = GetClassWithCompilationError();
 
-public class SomeOtherClass
-{{
-    public voi SomeMethod() {{ }} //wrong 'void'
-}}
-";
+        var blFileContent = bl.GenerateCode() + Environment.NewLine + classWithErr.GenerateCode();
 
-        AssertGeneratorWasRunNTimes(1, 1,blFileContent, GetValidDtoForBl());
+        AssertGeneratorWasRunNTimes(1, 1, blFileContent, dto.GenerateCode());
     }
 
     [Fact]
-    public void CompilationErrorInFileNotRelatedToDto() 
+    public void CompilationErrorInFileNotRelatedToDto()
     {
-        var extraFile = $@"
-public class SomeOtherClass
-{{
-    public voi SomeMethod() {{ }} //wrong 'void'
-}}
-";
-        AssertGeneratorWasRunNTimes(1, 1, GetValidBl(), GetValidDtoForBl(), extraFile);
+        var bl = GetValidBl("BlClass");
+        var dto = GetValidDtoForBl(bl.Name);
+        var classWithErr = GetClassWithCompilationError();
+
+        AssertGeneratorWasRunNTimes(1, 1, bl.GenerateCode(), dto.GenerateCode(), classWithErr.GenerateCode());
     }
 }
